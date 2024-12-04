@@ -68,7 +68,7 @@ function print_all_Interfaces() {
         if (elem === 'Interface') {
             deviceBox.forEach(nodeObj => {
                 //    console.log(nodeObj.Node_Name.toUpperCase() +"<->"+ word[currentIndex + 4].toUpperCase())
-                if (nodeObj.Node_Name.toUpperCase() === word[currentIndex + 4].toUpperCase()) {
+                if (nodeObj.Node_Name.toUpperCase() === word[currentIndex + 4].toUpperCase() || nodeObj.Node_Name.toUpperCase() === word[currentIndex + 3].toUpperCase()) {
 
                     nodeObj.Interfaces_Name.push(elem + " " + word[currentIndex + 1]);
                     nodeObj.Interface_Port_Number.push(get_Interface_Port_Number(word[currentIndex + 1]));
