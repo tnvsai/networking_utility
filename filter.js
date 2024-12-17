@@ -3,6 +3,8 @@
 // Device details:
 // au-olp-adm-it-dsw01-10.149.151.1
 
+const { forEach } = require("lodash");
+
 // const { yellow } = require("color-name");
 
 // bhpodosmin15-10.149.14.15`
@@ -434,20 +436,30 @@ function print_all_IPs() {
     word.forEach(function (device) {
         // console.log(device +" -> "+isIP_Found(device))
         if (isIP_Found(device) !== false) {
-            IP_array.push(isIP_Found(device));
-            let cmd = 'ping ' + isIP_Found(device) + '\n';
-            IP_Box += cmd;
-
+                IP_array.push(isIP_Found(device));
         }
+
     })
 
-    if (IP_array.length === 0) {
+    // Create set of unique values using Set constructor
+    let s = new Set(IP_array);
+
+    let unique_IPs = [...s];
+    unique_IPs.forEach(function (ip) {
+        let cmd = 'ping ' + ip + '\n';
+        IP_Box += cmd;
+    })
+
+
+   
+
+    if (unique_IPs.length === 0) {
         document.getElementById('result').value = "No IP found";
-        copyToClipboard();
-        showBanner_IP(IP_array.length);
+        // copyToClipboard();
+        showBanner_IP(unique_IPs.length);
         return;
     }
-    showBanner_IP(IP_array.length);
+    showBanner_IP(unique_IPs.length);
     document.getElementById('result').value = IP_Box;
     var result = document.getElementById('result');
     result.select();
@@ -455,10 +467,97 @@ function print_all_IPs() {
    // copyToClipboard();
 }
 
+// Check node up- down from terminal output
+function filter_node_Up_Down(){
+    document.getElementById('result').value = "";
+    // var input = e.target.value
+    var currentInput = document.getElementById('description').value.trim();
+    IP_Box = "";
+    IP_OBJ = [];
+    let str = currentInput.replace(/\n/g, " ").split(' ')
+    // console.log(str)
+    pingedIP = false;
+    str.forEach(function (elem, index) {
+        // console.log(elem +" -> "+isIP_Found(elem))
+        if (isIP_Found(elem) !== false && str[index - 1] === "Pinging") {
+            pingedIP = true;
+            IP_OBJ.push({"IP": isIP_Found(elem), "IP_status": getLossPercentage(str[index + 37])  })
+        }
+    })
+    if(pingedIP === false){
+        document.getElementById('result').value = "Invalid! Please enter ping output from terminal";;
+        return;
+    }
+    if (IP_OBJ.length === 0) {
+        document.getElementById('result').value = "No input found";
+        return;
+    }
+    let listOfUP_node = getUpCounts(IP_OBJ);
+    // console.log(listOfUP_node)
+    let listOfDOWN_node = getDownCounts(IP_OBJ);
+    var res = "\n";
+    res += "Total nodes count: " + IP_OBJ.length + '\n';
+    res += "UP: " + listOfUP_node.upCount + '\n';
+    res += "DOWN: " + listOfDOWN_node.downCount + '\n';
+    res += '\n';
+    res += "-------> List of "+ listOfUP_node.upCount + " UP devices" + '\n';
+    res += listOfUP_node.up_IP_list + '\n'
+    res += "====================================" + '\n'
+    res += "-------> List of "  + listOfDOWN_node.downCount +" DOWN devices" + '\n';
+    res += listOfDOWN_node.down_IP_list + '\n\n'
+
+    // showBanner_IP();
+    if(IP_OBJ.length === listOfUP_node.upCount){
+        document.getElementById('result').value = `All ${listOfUP_node.upCount} devices are up.`;
+    }
+    else if(IP_OBJ.length === listOfDOWN_node.downCount){
+        document.getElementById('result').value = `All ${listOfDOWN_node.downCount} devices are still down and unreachable.`
+    }
+    else{
+        document.getElementById('result').value = res;
+    }
+    
+    var result = document.getElementById('result');
+    result.select();
+    document.execCommand('copy');
+    // console.log(IP_OBJ)
+}
+
+function getLossPercentage(lossPercentage){
+    if(lossPercentage === "(0%" ) return "Up";
+    return "Down";
+}
+
+function getDownCounts(ip_obj){
+    let count = 0;
+    let DOWN_IP = "";
+    ip_obj.forEach(function (obj, index) {
+        if(obj.IP_status === "Down"){
+            count++;
+            DOWN_IP += obj.IP + "\n";
+        } 
+        
+    })
+    return {"down_IP_list": DOWN_IP, "downCount": count };
+}
+
+function getUpCounts(ip_obj){
+    let count = 0;
+    let UP_IP = "";
+    ip_obj.forEach(function (obj, index) {
+        if(obj.IP_status === "Up"){
+            count++;
+            UP_IP += obj.IP + "\n";
+        } 
+        
+    })
+    return {"up_IP_list": UP_IP, "upCount": count };
+}
+
 function showBanner_IP(iplength) {
      // Create a span element to display the message
      var span = document.createElement('span');
-     span.innerHTML = `${iplength} IPs copied`;
+     span.innerHTML = `${iplength} IP`;
      span.style.color = 'lightgreen';
      span.style.backgroundColor = 'black';
      span.style.border = '2px solid white';
@@ -480,7 +579,7 @@ function showBanner_IP(iplength) {
      // Remove the span after 3 seconds
      setTimeout(function () {
          span.remove();
-     }, 10000);
+     }, 6000);
 
 }
 
