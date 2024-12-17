@@ -471,32 +471,58 @@ function print_all_IPs() {
 function filter_node_Up_Down(){
     document.getElementById('result').value = "";
     // var input = e.target.value
-    var currentInput = document.getElementById('description').value.trim();
-    IP_Box = "";
-    IP_OBJ = [];
-    let str = currentInput.replace(/\n/g, " ").split(' ')
-    // console.log(str)
     pingedIP = false;
-    str.forEach(function (elem, index) {
-        // console.log(elem +" -> "+isIP_Found(elem))
-        if (isIP_Found(elem) !== false && str[index - 1] === "Pinging") {
-            pingedIP = true;
-            IP_OBJ.push({"IP": isIP_Found(elem), "IP_status": getLossPercentage(str[index + 37])  })
+    var currentInput = document.getElementById('description').value.trim();
+    let results = [];
+    let lines = currentInput.split('\n');
+    let currentIP = null;
+
+    lines.forEach(line => {
+        // console.log("Processing line:", line); // Debugging: Print each line
+        let ipMatch = line.match(/Pinging (\d+\.\d+\.\d+\.\d+)/);
+        if (ipMatch) {
+            currentIP = ipMatch[1];
+            // console.log("Found IP:", currentIP); // Debugging: Print the found IP
         }
-    })
+        let lossMatch = line.match(/Lost = \d+ \((\d+%) loss\)/);
+    
+        // console.log("Loss match result:", lossMatch); // Debugging: Print the match result
+        // console.log(lossMatch)
+        if (lossMatch && currentIP) {
+            pingedIP = true;
+            results.push({ IP: currentIP, loss: lossMatch[1] });
+            currentIP = null; // Reset for the next IP
+        }
+    });
+
+    
+    // IP_Box = "";
+    // IP_OBJ = [];
+    // let str = currentInput.replace(/\n/g, " ").split(' ')
+    // // console.log(str)
+    // pingedIP = false;
+    // str.forEach(function (elem, index) {
+    //     // console.log(elem +" -> "+isIP_Found(elem))
+    //     if (isIP_Found(elem) !== false && str[index - 1] === "Pinging") {
+    //         pingedIP = true;
+    //         IP_OBJ.push({"IP": isIP_Found(elem), "IP_status": getLossPercentage(str[index + 37])  })
+    //     }
+    // })
+    // console.log(results);
+
     if(pingedIP === false){
         document.getElementById('result').value = "Invalid! Please enter ping output from terminal";;
         return;
     }
-    if (IP_OBJ.length === 0) {
+    if (results.length === 0) {
         document.getElementById('result').value = "No input found";
         return;
     }
-    let listOfUP_node = getUpCounts(IP_OBJ);
+    let listOfUP_node = getUpCounts(results);
     // console.log(listOfUP_node)
-    let listOfDOWN_node = getDownCounts(IP_OBJ);
+    let listOfDOWN_node = getDownCounts(results);
     var res = "\n";
-    res += "Total nodes count: " + IP_OBJ.length + '\n';
+    res += "Total nodes count: " + results.length + '\n';
     res += "UP: " + listOfUP_node.upCount + '\n';
     res += "DOWN: " + listOfDOWN_node.downCount + '\n';
     res += '\n';
@@ -507,10 +533,10 @@ function filter_node_Up_Down(){
     res += listOfDOWN_node.down_IP_list + '\n\n'
 
     // showBanner_IP();
-    if(IP_OBJ.length === listOfUP_node.upCount){
+    if(results.length === listOfUP_node.upCount){
         document.getElementById('result').value = `All ${listOfUP_node.upCount} devices are up.`;
     }
-    else if(IP_OBJ.length === listOfDOWN_node.downCount){
+    else if(results.length === listOfDOWN_node.downCount){
         document.getElementById('result').value = `All ${listOfDOWN_node.downCount} devices are still down and unreachable.`
     }
     else{
@@ -523,16 +549,13 @@ function filter_node_Up_Down(){
     // console.log(IP_OBJ)
 }
 
-function getLossPercentage(lossPercentage){
-    if(lossPercentage === "(0%" ) return "Up";
-    return "Down";
-}
+
 
 function getDownCounts(ip_obj){
     let count = 0;
     let DOWN_IP = "";
     ip_obj.forEach(function (obj, index) {
-        if(obj.IP_status === "Down"){
+        if(obj.loss === "100%" || obj.loss !== "0%"){ // In case loss is 25%, 50%, 75%, Consider down
             count++;
             DOWN_IP += obj.IP + "\n";
         } 
@@ -545,7 +568,7 @@ function getUpCounts(ip_obj){
     let count = 0;
     let UP_IP = "";
     ip_obj.forEach(function (obj, index) {
-        if(obj.IP_status === "Up"){
+        if(obj.loss === "0%"){
             count++;
             UP_IP += obj.IP + "\n";
         } 
