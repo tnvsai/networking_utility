@@ -127,7 +127,7 @@ function print_all_Interfaces() {
             str9 += interface + "\n"
         ))
 
-        let str11 = "\n============================================================\n\n";
+        let str11 = "\n``````````````````````````````````````````````````````````````\n\n";
         //  console.log("=========================================================================\n")
 
         str10 = str5 + str9 + str11;
@@ -460,7 +460,7 @@ function print_all_IPs() {
         return;
     }
     showBanner_IP(unique_IPs.length);
-    document.getElementById('result').value = IP_Box;
+    document.getElementById('result').value = "cls" + '\n' + IP_Box;
     var result = document.getElementById('result');
     result.select();
     document.execCommand('copy');
@@ -523,13 +523,13 @@ function filter_node_Up_Down(){
     let listOfDOWN_node = getDownCounts(results);
     var res = "\n";
     res += "Total nodes count: " + results.length + '\n';
-    res += "UP: " + listOfUP_node.upCount + '\n';
-    res += "DOWN: " + listOfDOWN_node.downCount + '\n';
+    res += "Up devices: " + listOfUP_node.upCount + '\n';
+    res += "Down devices: " + listOfDOWN_node.downCount + '\n';
     res += '\n';
-    res += "-------> List of "+ listOfUP_node.upCount + " UP devices" + '\n';
+    res += "-------> List of "+ listOfUP_node.upCount + " Up devices" + '\n';
     res += listOfUP_node.up_IP_list + '\n'
     res += "====================================" + '\n'
-    res += "-------> List of "  + listOfDOWN_node.downCount +" DOWN devices" + '\n';
+    res += "-------> List of "  + listOfDOWN_node.downCount +" Down devices" + '\n';
     res += listOfDOWN_node.down_IP_list + '\n\n'
 
     // showBanner_IP();
@@ -602,7 +602,7 @@ function showBanner_IP(iplength) {
      // Remove the span after 3 seconds
      setTimeout(function () {
          span.remove();
-     }, 6000);
+     }, 20000);
 
 }
 
