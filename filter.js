@@ -20,7 +20,6 @@ function get_Interface_Port_Number(interface_Port_Number) {
 var isClickingFirstTime = true;
 
 // Parse interface down alerts and generate summary
-// Parse interface down alerts and generate summary
 function print_all_Interfaces() {
     document.getElementById('result').value = "";
     var currentInput = document.getElementById('description').value.trim();
@@ -547,6 +546,12 @@ function update_ping_progress(current, total, current_ip) {
 
 // Main auto-ping function
 async function autoPingIPs() {
+    // Check if Eel is available (Desktop App)
+    if (typeof eel === 'undefined') {
+        alert("⚠️ Feature Not Available in Browser\n\nAuto-Ping requires access to the system terminal, which browsers block for security.\n\nPlease use the desktop app (run_app.bat) for this feature.\n\nFor now, click 'Generate Ping Commands' instead!");
+        return;
+    }
+
     document.getElementById('result').value = "";
 
     var currentInput = document.getElementById('description').value.trim();

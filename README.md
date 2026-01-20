@@ -2,6 +2,8 @@
 
 A powerful desktop tool for analyzing device status, pinging multiple IPs automatically, and parsing interface alerts.
 
+**👉 Web Version:** [https://tnvsai.github.io/networking_utility/](https://tnvsai.github.io/networking_utility/)
+
 ## 🚀 How to Run (Easiest Method)
 
 Simply double-click the **`run_app.bat`** file in the project folder. 
