@@ -181,6 +181,25 @@ async function copyNodeUpCmd(e) {
         else if (copy_cmd === 'CPU_Load_Resolution_template') {
             cmd_for_resolve = ['1.', 'Reason for Outage(RFO): High CPU utilization', 'Impact:  ', 'Resolution Steps: ', '---CPU load is below 80% and utilization is normal.', '--- Hence proceeding to close the incident.', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: High CPU Load', 'Reason for Outage (RFO): CPU Load was above 80%', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
+        else if (copy_cmd === 'Village_Resolution_template') {
+            cmd_for_resolve = [
+                'Customer Name:',
+                '',
+                'SLA: NA',
+                '',
+                'SLA Breached Reason:',
+                '',
+                'Issue Description:',
+                '',
+                'Resolution Steps:',
+                ' - User length of stay has completed',
+                ' - Hence, Proceeding to close the incident',
+                '',
+                'Fix Actions Taken: Yes',
+                '',
+                'Customer Confirmed Normal Operation & RFO Awareness: NA'
+            ];
+        }
         else {
             cmd_for_resolve = ['No Text Copied!']
         }
@@ -714,15 +733,32 @@ function processPingResults(results, deviceMapping = {}) {
 
     document.getElementById('result').value = detailedOutput;
 
-    // Copy to clipboard
-    var resultEl = document.getElementById('result');
-    resultEl.select();
-    document.execCommand('copy');
+    // Async copy using Clipboard API
+    // Note: Browsers may block this if the window isn't focused or if the event isn't direct
+    // We try our best and notify if it fails.
+    navigator.clipboard.writeText(detailedOutput).then(function () {
+        showBanner();
+    }).catch(function (err) {
+        console.warn('Auto-copy failed (browser restriction):', err);
+        // Fallback or just let the user know
+        // We don't alert to avoid annoyance, but we could highlight the copy button
+        // For now, let's just make sure the user sees the result.
+
+        // Try fallback just in case
+        var resultEl = document.getElementById('result');
+        resultEl.select();
+        try {
+            document.execCommand('copy');
+            showBanner();
+        } catch (e) {
+            console.error('Fallback copy failed too', e);
+            alert("Auto-copy blocked by browser. Please click the 'Copy' button manually.");
+        }
+    });
 
     // Hide progress
     setTimeout(function () {
         showPingProgress(false);
-        showBanner();
     }, 1000);
 }
 
