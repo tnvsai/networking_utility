@@ -48,27 +48,33 @@
     <div id="banner">Copied</div>
 
     <!-- Auto-Ping Progress Modal -->
-    <div id="pingProgress"
-        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.9); padding:30px; border:3px solid cyan; border-radius:10px; z-index:9999; color:white; text-align:center; min-width:400px;">
-        <h3 style="color:aquamarine; margin-bottom:20px;">Auto-Ping in Progress...</h3>
-        <div id="pingStatus" style="font-size:16px; margin-bottom:15px;">Preparing to ping...</div>
-        <div id="pingDetails" style="font-size:14px; color:lightgreen;"></div>
+    <div id="pingProgress">
+        <h3>Auto-Ping in Progress...</h3>
+        <div id="pingStatus">Preparing to ping...</div>
+        <div id="pingDetails"></div>
         <div style="margin-top:20px;">
-            <div style="width:100%; background:#333; height:25px; border-radius:5px; overflow:hidden;">
-                <div id="pingProgressBar"
-                    style="width:0%; background:linear-gradient(90deg, cyan, lime); height:100%; transition:width 0.3s;">
-                </div>
+            <div class="progress-track">
+                <div id="pingProgressBar"></div>
             </div>
-            <div id="pingPercentage" style="margin-top:10px; color:yellow; font-weight:bold;">0%</div>
+            <div id="pingPercentage">0%</div>
         </div>
     </div>
 
     <div class="main-wrapper">
+        <!-- Theme Toggle Switch -->
+        <div class="theme-switch-wrapper">
+            <span class="mode-icon">☀️</span>
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" onchange="toggleTheme()" checked>
+                <div class="slider round"></div>
+            </label>
+            <span class="mode-icon">🌙</span>
+        </div>
+
         <div class="navbar-button">
             <div class="template-section"
                 style="margin: 15px 0; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
-                <div
-                    style="color: aquamarine; font-weight: bold; padding: 5px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">
+                <div class="section-header">
                     Command Templates</div>
                 <div>
                     <button class="cool-button" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
@@ -102,6 +108,7 @@
                 </div>
             </div>
         </div>
+
         <form style="background-color: transparent;">
 
             <div class="textarea-container">
@@ -119,7 +126,8 @@
                                     </span>
                                 </div>
                                 <button class="action-btn clear-btn" type="button"
-                                    onclick="clearText('description')">🗑️ Clear</button>
+                                    onclick="clearText('description')">🗑️
+                                    Clear</button>
                                 <button class="action-btn copy-btn" type="button" onclick="copyText('description')">📋
                                     Copy</button>
                             </div>
@@ -160,6 +168,10 @@
                 <input type="button" value="Analyse Interface" onclick="print_all_Interfaces()">
             </div>
         </form>
+
+        <div class="version-footer">
+            v1.2.0
+        </div>
     </div>
 
 </body>

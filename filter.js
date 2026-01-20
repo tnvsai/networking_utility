@@ -727,3 +727,37 @@ function processPingResults(results, deviceMapping = {}) {
         showBanner();
     }, 1000);
 }
+
+// ===========================
+// THEME SWITCHER
+// ===========================
+
+function toggleTheme() {
+    const body = document.body;
+    const checkbox = document.getElementById('checkbox');
+
+    // Logic Reversed: Checked (ON) = Night Mode (Default Dark CSS)
+    // Unchecked (OFF) = Day Mode (Light Mode CSS Override)
+    if (checkbox.checked) {
+        body.classList.remove('light-mode'); // Enable Dark (remove override)
+        localStorage.setItem('theme', 'dark');
+    } else {
+        body.classList.add('light-mode'); // Enable Light
+        localStorage.setItem('theme', 'light');
+    }
+}
+
+// Initialize theme on load
+document.addEventListener('DOMContentLoaded', (event) => {
+    const currentTheme = localStorage.getItem('theme');
+    const checkbox = document.getElementById('checkbox');
+
+    // Default to Dark Mode (Switch ON) if null or 'dark'
+    if (currentTheme === 'light') {
+        document.body.classList.add('light-mode');
+        if (checkbox) checkbox.checked = false; // Switch OFF for Light
+    } else {
+        document.body.classList.remove('light-mode');
+        if (checkbox) checkbox.checked = true; // Switch ON for Dark
+    }
+});

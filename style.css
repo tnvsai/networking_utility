@@ -1,14 +1,64 @@
-/* Global Styles */
+/* Global Styles & Variables */
+:root {
+    --bg-color: rgb(24, 24, 24);
+    --text-color: white;
+    --accent-color: aquamarine;
+    --textarea-bg: #1e1e1e;
+    --textarea-text: #00ff00;
+    --textarea-border: #444;
+    --btn-bg-hover: #333;
+    --container-bg: rgba(255, 255, 255, 0.05);
+    --tooltip-bg: black;
+    --version-color: #555;
+    --card-border: 1px solid #333;
+
+    /* Modal Variables (Dark Default) */
+    --modal-bg: rgba(0, 0, 0, 0.95);
+    --modal-border: cyan;
+    --modal-text: white;
+    --modal-heading: aquamarine;
+    --modal-details: lightgreen;
+    --modal-bar-bg: #333;
+    --modal-percent: yellow;
+}
+
+/* Light Mode Overrides */
+body.light-mode {
+    --bg-color: #f0f2f5;
+    --text-color: #333;
+    --accent-color: #007bff;
+    /* Blue for daylight */
+    --textarea-bg: #ffffff;
+    --textarea-text: #333;
+    --textarea-border: #ccc;
+    --btn-bg-hover: #e0e0e0;
+    --container-bg: #ffffff;
+    --tooltip-bg: #333;
+    --version-color: #888;
+    --card-border: 1px solid #ddd;
+
+    /* Modal Light Mode */
+    --modal-bg: #ffffff;
+    --modal-border: #007bff;
+    --modal-text: #333;
+    --modal-heading: #007bff;
+    --modal-details: #28a745;
+    --modal-bar-bg: #e9ecef;
+    --modal-percent: #007bff;
+}
+
 body {
-    background-color: rgb(24, 24, 24);
-    color: white;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 20px;
+    transition: background-color 0.3s, color 0.3s;
+    /* Smooth transition */
 }
 
 h2 {
-    color: aquamarine;
+    color: var(--accent-color);
 }
 
 .button-container {
@@ -40,6 +90,7 @@ input[type="button"]:hover {
     background-color: #3f51b5;
     /* Blue */
     color: white;
+    /* Keep buttons white even in light mode for contrast */
     border: none;
     padding: 8px 16px;
     margin: 5px;
@@ -57,7 +108,7 @@ input[type="button"]:hover {
 .hovertext {
     visibility: hidden;
     width: 200px;
-    background-color: #555;
+    background-color: var(--tooltip-bg);
     color: #fff;
     text-align: center;
     border-radius: 6px;
@@ -81,6 +132,18 @@ input[type="button"]:hover {
     max-width: 1600px;
     margin: 0 auto;
     width: 100%;
+    position: relative;
+    /* Keep absolute children (theme switch) relative to this */
+}
+
+/* Section Headers */
+.section-header {
+    color: var(--accent-color);
+    font-weight: bold;
+    padding: 5px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* Textarea Layout */
@@ -109,16 +172,16 @@ textarea {
     width: 100%;
     flex-grow: 1;
     /* Allow textarea to fill vertically */
-    background-color: #1e1e1e;
-    color: #00ff00;
-    /* Hacker green text */
-    border: 1px solid #444;
+    background-color: var(--textarea-bg);
+    color: var(--textarea-text);
+    border: 1px solid var(--textarea-border);
     border-radius: 4px;
     padding: 10px;
     font-family: 'Consolas', monospace;
     resize: vertical;
     min-height: 300px;
     /* Ensure a good minimum height */
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 /* Button Gradients */
@@ -129,6 +192,18 @@ textarea {
     border: 2px solid cyan !important;
     padding: 10px 20px;
     cursor: pointer;
+}
+
+/* Light Mode specific button borders for better visibility */
+body.light-mode input[type="button"] {
+    border: 1px solid #ccc;
+    background-color: #e0e0e0;
+}
+
+body.light-mode .btn-gradient {
+    border: 2px solid #007bff !important;
+    /* Blue border for main button in light mode */
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
 }
 
 .btn-gradient:hover {
@@ -174,8 +249,9 @@ textarea {
     cursor: pointer;
     margin-left: 5px;
     position: relative;
-    color: aqua;
+    color: var(--accent-color);
     background: rgba(0, 255, 255, 0.1);
+    /* Keep this subtle */
     border-radius: 50%;
     width: 20px;
     height: 20px;
@@ -184,10 +260,14 @@ textarea {
     font-size: 14px;
 }
 
+body.light-mode #tooltip {
+    background: rgba(0, 123, 255, 0.1);
+}
+
 .tooltiptext {
     visibility: hidden;
     width: 250px;
-    background-color: black;
+    background-color: var(--tooltip-bg);
     color: #fff;
     text-align: center;
     border-radius: 6px;
@@ -211,7 +291,7 @@ textarea {
     margin-left: -5px;
     border-width: 5px;
     border-style: solid;
-    border-color: black transparent transparent transparent;
+    border-color: var(--tooltip-bg) transparent transparent transparent;
 }
 
 #tooltip:hover .tooltiptext {
@@ -225,24 +305,30 @@ textarea {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--container-bg);
     padding: 5px 10px;
     border-radius: 4px;
+    /* Optional: box shadow in light mode for better separation */
+}
+
+body.light-mode .label-container {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 label b {
     font-size: 1.1em;
     display: inline-block;
-    color: aquamarine !important;
+    color: var(--accent-color) !important;
     /* Force consistency */
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 .action-btn {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--container-bg);
     border: 1px solid transparent;
     color: #ddd;
+    /* Default dark mode text */
     padding: 4px 10px;
     font-size: 11px;
     border-radius: 3px;
@@ -253,10 +339,21 @@ label b {
     font-weight: bold;
 }
 
+body.light-mode .action-btn {
+    color: #555;
+    /* Darker text for light mode */
+    border: 1px solid #ccc;
+}
+
 .action-btn:hover {
-    background-color: #333;
+    background-color: var(--btn-bg-hover);
     color: white;
     border-color: #666;
+}
+
+body.light-mode .action-btn:hover {
+    color: #333;
+    /* Keep hover text visible */
 }
 
 .action-btn.copy-btn:hover {
@@ -269,4 +366,139 @@ label b {
     background-color: rgba(244, 67, 54, 0.2);
     color: #f44336;
     border-color: #f44336;
+}
+
+/* Theme Toggle Switch */
+.theme-switch-wrapper {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    z-index: 100;
+}
+
+.theme-switch {
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    width: 50px;
+}
+
+.theme-switch input {
+    display: none;
+}
+
+.slider {
+    background-color: #ccc;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .4s;
+}
+
+.slider:before {
+    background-color: #fff;
+    bottom: 4px;
+    content: "";
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .4s;
+    width: 16px;
+}
+
+input:checked+.slider {
+    background-color: #66bb6a;
+}
+
+input:checked+.slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+.mode-icon {
+    font-size: 18px;
+    margin: 0 8px;
+}
+
+/* Version Footer */
+.version-footer {
+    text-align: right;
+    margin-top: 20px;
+    color: var(--version-color);
+    font-size: 12px;
+    font-family: monospace;
+}
+
+/* Auto-Ping Modal Styles */
+#pingProgress {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--modal-bg);
+    padding: 30px;
+    border: 3px solid var(--modal-border);
+    border-radius: 10px;
+    z-index: 9999;
+    color: var(--modal-text);
+    text-align: center;
+    min-width: 400px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+#pingProgress h3 {
+    color: var(--modal-heading);
+    margin-bottom: 20px;
+}
+
+#pingStatus {
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+#pingDetails {
+    font-size: 14px;
+    color: var(--modal-details);
+}
+
+.progress-track {
+    width: 100%;
+    background: var(--modal-bar-bg);
+    height: 25px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 20px;
+    border: 1px solid #888;
+    /* Subtle border for visibility in light mode */
+}
+
+#pingProgressBar {
+    width: 0%;
+    background: linear-gradient(90deg, cyan, lime);
+    height: 100%;
+    transition: width 0.3s;
+}
+
+/* Adjust gradient for light mode */
+body.light-mode #pingProgressBar {
+    background: linear-gradient(90deg, #007bff, #00c6ff);
+}
+
+#pingPercentage {
+    margin-top: 10px;
+    color: var(--modal-percent);
+    font-weight: bold;
 }
