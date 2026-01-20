@@ -2,41 +2,43 @@
 <html>
 
 <head>
-<!--  Adsense -->
-<!--  Ashish Singh -->
- <meta name="google-adsense-account" content="ca-pub-8835983411485108">
-<!--     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8835983411485108"
+    <!--  Adsense -->
+    <!--  Ashish Singh -->
+    <meta name="google-adsense-account" content="ca-pub-8835983411485108">
+    <!--     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8835983411485108"
      crossorigin="anonymous"></script> -->
-       <!-- Google tag (gtag.js) -->
-<!--     Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-QT3X9W3H8H"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+    <!-- Google tag (gtag.js) -->
+    <!--     Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QT3X9W3H8H"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
 
-  gtag('config', 'G-QT3X9W3H8H');
-</script>
- 
-    <title>Device</title>
+        gtag('config', 'G-QT3X9W3H8H');
+    </script>
+
+    <title>Network Ping & Analysis Tool</title>
     <link rel="icon" type="image/png" href="favicon.png">
- 
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="style.css">
-  <!-- Disable Right-Click and View Source -->
+    <!-- Disable Right-Click and View Source -->
     <script>
-  document.addEventListener("contextmenu", function(e) {
-    e.preventDefault();
-  }, false);
-  
-  document.addEventListener("keydown", function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'i')) {
-      e.preventDefault();
-    }
-  }, false);
-</script>
+        document.addEventListener("contextmenu", function (e) {
+            e.preventDefault();
+        }, false);
 
+        document.addEventListener("keydown", function (e) {
+            if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'i')) {
+                e.preventDefault();
+            }
+        }, false);
+    </script>
+
+    <!-- Eel JS for Python backend -->
+    <script type="text/javascript" src="/eel.js"></script>
     <script src="filter.js"></script>
 
 
@@ -44,91 +46,121 @@
 
 <body>
     <div id="banner">Copied</div>
-    <div class="navbar-button">
-        <div id="node" class="page active">
-            <!-- Content of page 1 -->
 
-
-            <a href="interface.html" class="btn btn-info" onclick="showPage('interface');">Go to Multiple_Interface_Down
-                page</a>
-        </div>
-
-        <div id="interface" class="page">
-            <!-- Content of page 2 -->
-
-
-            <a href="index.html" class="btn btn-info" onclick="showPage('node');">Go to Multiple_Device_Down page</a>
-        </div>
-        <div>   
-                
-            <i style="color: aquamarine;"> ‎‎ ‎   Putty commands</i> 
-            <button class="cool-button" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
-                Device
-                <span class="hovertext">Click to copy for node up</span>
-            </button>
-            <button class="cool-button" type="button" id="hardwareUpCmd" onclick="copyNodeUpCmd(event)">
-                Hardware
-                <span class="hovertext">Click to copy for hardware related </span>
-            </button>
-<!--             <button class="cool-button" type="button" id="CPU_Cmd" onclick="copyNodeUpCmd(event)">
-                CPU
-                <span class="hovertext">Click to copy for CPU utilization</span>
-            </button> -->
-            <b style="color: #621464; font-size: x-large;"> | </b>
-             <i style="color: aquamarine;"> Resolution Template</i> 
-            <button class="cool-button" type="button" id="Node_Resolution_template" onclick="copyNodeUpCmd(event)">
-                Node
-                <span class="hovertext">Click to copy for Node_Resolution_template</span>
-            </button>
-            <button class="cool-button" type="button" id="Hardware_Resolution_template" onclick="copyNodeUpCmd(event)">
-                Hardware
-                <span class="hovertext">Click to copy for Hardware_Resolution_template</span>
-            </button>
-            <button class="cool-button" type="button" id="Interface_Resolution_template" onclick="copyNodeUpCmd(event)">
-                Interface
-                <span class="hovertext">Click to copy for Interface_Resolution_template</span>
-            </button>
-            <button class="cool-button" type="button" id="CPU_Load_Resolution_template" onclick="copyNodeUpCmd(event)">
-                CPU Load
-                <span class="hovertext">Click to copy for High CPU utilization template</span>
-            </button>
+    <!-- Auto-Ping Progress Modal -->
+    <div id="pingProgress"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.9); padding:30px; border:3px solid cyan; border-radius:10px; z-index:9999; color:white; text-align:center; min-width:400px;">
+        <h3 style="color:aquamarine; margin-bottom:20px;">Auto-Ping in Progress...</h3>
+        <div id="pingStatus" style="font-size:16px; margin-bottom:15px;">Preparing to ping...</div>
+        <div id="pingDetails" style="font-size:14px; color:lightgreen;"></div>
+        <div style="margin-top:20px;">
+            <div style="width:100%; background:#333; height:25px; border-radius:5px; overflow:hidden;">
+                <div id="pingProgressBar"
+                    style="width:0%; background:linear-gradient(90deg, cyan, lime); height:100%; transition:width 0.3s;">
+                </div>
+            </div>
+            <div id="pingPercentage" style="margin-top:10px; color:yellow; font-weight:bold;">0%</div>
         </div>
     </div>
-    <form style="background-color:rgb(0, 0, 0)">
 
+    <div class="main-wrapper">
+        <div class="navbar-button">
+            <div class="template-section"
+                style="margin: 15px 0; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <div
+                    style="color: aquamarine; font-weight: bold; padding: 5px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">
+                    Command Templates</div>
+                <div>
+                    <button class="cool-button" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
+                        Device
+                        <span class="hovertext">Click to copy for node up</span>
+                    </button>
+                    <button class="cool-button" type="button" id="hardwareUpCmd" onclick="copyNodeUpCmd(event)">
+                        Hardware
+                        <span class="hovertext">Click to copy for hardware related </span>
+                    </button>
+                    <button class="cool-button" type="button" id="Node_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Node
+                        <span class="hovertext">Click to copy for Node_Resolution_template</span>
+                    </button>
+                    <button class="cool-button" type="button" id="Hardware_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Hardware
+                        <span class="hovertext">Click to copy for Hardware_Resolution_template</span>
+                    </button>
+                    <button class="cool-button" type="button" id="Interface_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Interface
+                        <span class="hovertext">Click to copy for Interface_Resolution_template</span>
+                    </button>
+                    <button class="cool-button" type="button" id="CPU_Load_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        CPU Load
+                        <span class="hovertext">Click to copy for High CPU utilization template</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <form style="background-color: transparent;">
 
-        <div class="textarea-container">
-            <div class="div-50">
+            <div class="textarea-container">
+                <div class="div-50">
 
-                <label for="result">
-                    <label for="description"><b style="color: aquamarine;">MULTIPLE_DEVICES_DOWN</b></label>
-                    <div id="tooltip">&#x1F6C8;
-                        <span class="tooltiptext">
-                            Prefix ping of each IP and get nodes up/down status when check with output
-                        </span>
+                    <label for="description">
+                        <div class="label-container">
+                            <b>Input</b>
+                            <div style="display: flex; align-items: center;">
+                                <div id="tooltip">i
+                                    <span class="tooltiptext">
+                                        Paste incident text containing IP addresses. Use buttons to extract IPs or
+                                        analyze ping
+                                        results.
+                                    </span>
+                                </div>
+                                <button class="action-btn clear-btn" type="button"
+                                    onclick="clearText('description')">🗑️ Clear</button>
+                                <button class="action-btn copy-btn" type="button" onclick="copyText('description')">📋
+                                    Copy</button>
+                            </div>
+                        </div>
+                    </label>
+                    <textarea id="description" name="description" rows="13"
+                        placeholder="Paste your text here..."></textarea>
+
+                </div>
+                <div class="div-50">
+                    <label for="result">
+                        <div class="label-container">
+                            <b>Output</b>
+                            <div>
+                                <button class="action-btn clear-btn" type="button" onclick="clearText('result')">🗑️
+                                    Clear</button>
+                                <button class="action-btn copy-btn" type="button" onclick="copyText('result')">📋
+                                    Copy</button>
+                            </div>
+                        </div>
+                    </label>
+                    <textarea id="result" name="result" rows="13" readonly
+                        placeholder="Results will appear here..."></textarea>
+
+                    <!-- Interface Analysis Buttons Container -->
+                    <div style="margin-top: 10px;">
+                        <b id="titleButtons" style="color: aquamarine;"></b>
+                        <div class="AllNodeButtons"></div>
                     </div>
-                </label>
-                <textarea id="description" name="description" rows="13" cols="120"></textarea>
+                </div>
 
             </div>
-            <div class="div-50">
-                <label for="result">
-                    <b style="color: aquamarine;">Filtered IPs</b>
-                </label>
-                <textarea id="result" name="result" rows="13" cols="120" readonly></textarea>
-                <!-- <textarea id="result1" name="result" rows="15" cols="30" readonly></textarea> -->
-
+            <br>
+            <div class="button-container">
+                <input type="button" value="Generate Ping Commands" onclick="print_all_IPs()">
+                <input type="button" value="Auto-Ping All IPs" onclick="autoPingIPs()" class="btn-gradient">
+                <input type="button" value="Analyze Ping Results" onclick="filter_node_Up_Down()">
+                <input type="button" value="Analyse Interface" onclick="print_all_Interfaces()">
             </div>
-
-        </div>
-        <br>
-        <div class="button-container">
-            <input type="button" value="Ping IP" onclick="print_all_IPs()">
-            <input type="button" value="Node output" onclick="filter_node_Up_Down()">
-            <!-- <div id="copy-icon" onclick="copyToClipboard()"><i class="fas fa-copy"></i></div> -->
-
-        </div>
-    </form>
+        </form>
+    </div>
 
 </body>
 

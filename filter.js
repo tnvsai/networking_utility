@@ -1,24 +1,17 @@
-// var description = `CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface Port-channel10 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface Port-channel12 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TenGigabitEthernet1/1/2 on Node BHPODOSMIN15 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/3 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/41 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/43 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/44 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/45 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/7 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/8 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE1/0/9 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE2/0/1 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE2/0/35 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE2/0/41 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE2/0/43 on Node AU-OLP-ADM-IT-DSW01 is Down. CRITICAL_INTERFACE_DOWN: Device NET-CORE_SWITCH Interface TwentyFiveGigE2/0/44 on Node AU-OLP-ADM-IT-DSW01 is Down.
-// Site Info: BHPB1036-AU/OLP/Olympic Dam Mine
-// Device details:
-// au-olp-adm-it-dsw01-10.149.151.1
+// ===========================
+// NETWORKING UTILITY - FILTER.JS
+// Main logic for IP extraction, ping analysis, and interface parsing
+// ===========================
 
-const { forEach } = require("lodash");
-
-// const { yellow } = require("color-name");
-
-// bhpodosmin15-10.149.14.15`
+// Extract port number from interface name
 function get_Interface_Port_Number(interface_Port_Number) {
-    if (interface_Port_Number.toLowerCase().startsWith("port-channel")) {  //"Port-channel100"
-        // console.log(interface_Port_Number.substring(12));
+    if (interface_Port_Number.toLowerCase().startsWith("port-channel")) {
         return interface_Port_Number.substring(12);
     }
-    else if (interface_Port_Number.toLowerCase().startsWith("vlan")) {   // "Vlan810"
-        // console.log(interface_Port_Number.substring(4));
+    else if (interface_Port_Number.toLowerCase().startsWith("vlan")) {
         return interface_Port_Number;
     }
-
-    else if (interface_Port_Number.match(/\w+(\d+.*)/)) {   //"TenGigabitEthernet1/1/15"
+    else if (interface_Port_Number.match(/\w+(\d+.*)/)) {
         let match = interface_Port_Number.match(/\w+(\d+.*)/);
         return match ? match[1] : interface_Port_Number;
     }
@@ -26,133 +19,120 @@ function get_Interface_Port_Number(interface_Port_Number) {
 
 var isClickingFirstTime = true;
 
+// Parse interface down alerts and generate summary
+// Parse interface down alerts and generate summary
 function print_all_Interfaces() {
     document.getElementById('result').value = "";
-    // var input = e.target.value
     var currentInput = document.getElementById('description').value.trim();
+    var deviceMap = new Map(); // Use Map to group by Node Name
 
-    var total_Count = 0;
-    deviceBox = [];
+    // Normalize input to handle common typos and inconsistencies
+    let lines = currentInput.split('\n');
 
-    let word = currentInput.replace(/\n/g, " ").split(' ')
-    //get devices details
-    DEVICES_LIST = word.forEach(function (device, currentIndex) {
-        // console.log(device + ": " + currentIndex);
-        if (device == 'details:') {
-            // console.log('Device Details:');
-            for (let i = currentIndex + 1; i < word.length; i++) {
-                let node_full_name = word[i].trim();
-                if (isIP_Found(node_full_name) !== false) {
-                    let ip = isIP_Found(node_full_name);
-                    let startIndexOfIP = node_full_name.indexOf(ip);
-                    let node_name = node_full_name.slice(0, startIndexOfIP - 1);
-                    // console.log("node_name: " + node_name + " and IP: " + ip);
-                    deviceBox.push({ "Node_Name": node_name, "IP": ip, "Interfaces_Name": [], "Interface_Port_Number": [] })
-                }
-                else {
-                    continue;
-                }
+    lines.forEach(line => {
+        let cleanLine = line.trim();
+        if (!cleanLine) return;
 
-                // let ip = node_full_name.substr(node_full_name.lastIndexOf("-") + 1)
-                // let node_name = node_full_name.slice(0, node_full_name.lastIndexOf("-"));
+        // Regex to find Port and Node
+        // Handles: "Port 13", "Pert 20", "on Node:", "an Node:"
+        // Captures: Port Number (Group 1), Raw Node Name Section (Group 2)
+        let match = cleanLine.match(/(?:Port|Pert)\s+(\d+)\s+(?:on|an)\s+Node:\s*(.+)/i);
 
+        if (match) {
+            let port = match[1];
+            let rawNode = match[2];
 
+            // Clean up Node Name
+            // Remove "is Down" variations, handling space or hyphen separators
+            // Handles: " is Down", "-is-Down", " 31s Down", "-31s-Down" etc.
+            let nodeName = rawNode
+                .replace(/[- ]+(?:is|an|31s|3is|6is|IS)(?:[- ]+Downs?)?/i, '') // Remove "is Down" typo variations with aggressive separator match
+                .replace(/[- ]+Downs?$/i, '') // Remove trailing "Down" if not caught above
+                .replace(/[\.,;]+$/, '') // Remove trailing punctuation
+                .replace(/-+$/, '') // Remove trailing hyphens (if any left from aggressive replacements)
+                .trim();
+
+            // Fix spaces in node name (assume they should be hyphens based on user examples)
+            // e.g., "BMA VT-BPV" -> "BMA-VT-BPV"
+            nodeName = nodeName.replace(/\s+/g, '-');
+
+            // Formatting: Upper case for consistency
+            nodeName = nodeName.toUpperCase();
+
+            // Store in Map
+            if (!deviceMap.has(nodeName)) {
+                deviceMap.set(nodeName, {
+                    Node_Name: nodeName,
+                    IP: "N/A", // IP not provided in this format
+                    Interfaces_Name: [],
+                    Interface_Port_Number: []
+                });
             }
 
+            let deviceObj = deviceMap.get(nodeName);
+            // Add interface (Format: "Port 13" or just "13"? Previous code used "Interface Port 13")
+            // Recreating "Interface Port <N>" format for consistency
+            deviceObj.Interfaces_Name.push("Port " + port);
+            deviceObj.Interface_Port_Number.push(port);
         }
-
-    });
-    //  console.log(deviceBox)
-
-
-    // Get Interfaces details of corresponding nodes
-    INTERFACES_LIST = word.map(function (elem, currentIndex) {
-        if (elem === 'Interface') {
-            deviceBox.forEach(nodeObj => {
-                //    console.log(nodeObj.Node_Name.toUpperCase() +"<->"+ word[currentIndex + 4].toUpperCase())
-                if (nodeObj.Node_Name.toUpperCase() === word[currentIndex + 4].toUpperCase() || nodeObj.Node_Name.toUpperCase() === word[currentIndex + 3].toUpperCase()) {
-
-                    nodeObj.Interfaces_Name.push(elem + " " + word[currentIndex + 1]);
-                    nodeObj.Interface_Port_Number.push(get_Interface_Port_Number(word[currentIndex + 1]));
-                }
-                // accumulator.push(deviceBox)
-            });
-            total_Count++;
-
-        }
-
-    })
-
-
-
-
-
-    // console.log("Update: ")
-    //  console.log(" - Total " + total_Count + " interfaces are down from " + deviceBox.length + " devices. \n");
-    str1 = "- Total " + total_Count + " interfaces are down from " + deviceBox.length + " devices. \n"
-
-
-    str2 = "";
-    deviceBox.forEach((nodeObj, index) => {
-
-        // console.log("\t   " + (index + 1) + ". " + nodeObj.Node_Name + "(" + nodeObj.IP + ") ----> "
-        //     + nodeObj.Interfaces_Name.length + " interfaces down.");
-
-        let str3 = "\t   " + (index + 1) + ". " + nodeObj.Node_Name + "(" + nodeObj.IP + ") ----> "
-            + nodeObj.Interfaces_Name.length + " interfaces down.\n";
-
-        str2 += str3;
-
-    })
-    let str4 = "____________________________________________________________________________________\n\n"
-
-    // console.log("____________________________________________________________________________________\n")
-
-    str5 = "";
-    str10 = ""
-    deviceBox.forEach((nodeObj, index) => {
-
-        // console.log((index + 1) + " -> Node name: " + nodeObj.Node_Name);
-        // console.log("     IP Address: " + nodeObj.IP);
-
-        // console.log("--------------Below " + nodeObj.Interfaces_Name.length + " interfaces are down------------------\n");
-        let str6 = (index + 1) + " -> Node name: " + nodeObj.Node_Name;
-        let str7 = "\n     IP Address: " + nodeObj.IP;
-        let str8 = "\n\n--------------Below " + nodeObj.Interfaces_Name.length + " interfaces are down------------------\n\n"
-        str5 = str10 + str6 + str7 + str8;
-        //  console.log(nodeObj.Interfaces_Name.join("\n"))
-        str9 = ""
-        nodeObj.Interfaces_Name.forEach(interface => (
-            // console.log(interface + "\n")
-            str9 += interface + "\n"
-        ))
-
-        let str11 = "\n``````````````````````````````````````````````````````````````\n\n";
-        //  console.log("=========================================================================\n")
-
-        str10 = str5 + str9 + str11;
-
     });
 
-    document.getElementById('result').value = `UPDATE:\n` + str1 + str2 + str4 + str10;
-    
-    document.getElementById('titleButtons').innerText = `Interface down of ${deviceBox.length} device below, Click to copy`
-    document.getElementById('titleButtons').style="color: rgb(172, 25, 172)";
- 
-   
-    createNodesButtons(deviceBox)
+    // Convert Map back to Array for existing logic compatibility
+    deviceBox = Array.from(deviceMap.values());
+    let total_Count = deviceBox.reduce((sum, device) => sum + device.Interfaces_Name.length, 0);
 
+    // Build Output
+    // Requested Format:
+    // Node name: BMA-VT-BPV-COM2-DSW2-3
+    // interfaces: 2
+    //
+    // Port 14
+    // Port 13
+
+    let finalOutput = "";
+
+    // Header
+    finalOutput += `Total Interfaces Down: ${total_Count} (across ${deviceBox.length} devices)\n\n`;
+
+    deviceBox.forEach((nodeObj, index) => {
+        // Separator between devices
+        if (index > 0) finalOutput += "\n------------------------------------------------------------\n\n";
+
+        finalOutput += `Node name: ${nodeObj.Node_Name}\n`;
+        finalOutput += `Interfaces: ${nodeObj.Interfaces_Name.length}\n\n`;
+
+        nodeObj.Interfaces_Name.forEach(interfaceName => {
+            finalOutput += `  ${interfaceName}\n`; // Indented
+        });
+    });
+
+    document.getElementById('result').value = finalOutput;
+
+    // Clear previous buttons/titles if any
+    let titleBtn = document.getElementById('titleButtons');
+    if (titleBtn) {
+        titleBtn.innerText = "";
+    }
+
+    var nodesContainer = document.querySelector('.AllNodeButtons');
+    if (nodesContainer) {
+        while (nodesContainer.firstChild) {
+            nodesContainer.removeChild(nodesContainer.firstChild);
+        }
+    }
 
     return deviceBox;
 }
 
+// Copy result to clipboard
 function copyToClipboard() {
     var result = document.getElementById('result');
     result.select();
     document.execCommand('copy');
     showBanner();
-    // alert("Text copied successfully!");
 }
+
+// Show copy banner notification
 function showBanner() {
     var banner = document.getElementById('banner');
     banner.style.display = 'block';
@@ -160,153 +140,102 @@ function showBanner() {
         banner.style.display = 'none';
     }, 500);
 }
+
+// Copy predefined command templates
 async function copyNodeUpCmd(e) {
-   var copy_cmd = e.target.id;
-    // Add a click event listener to the button
-    console.log(copy_cmd);
-    // Select all the <p> elements inside the button
-    // var pElements = copy_cmd.querySelectorAll('p');
-
-    // Create an array to hold the texts to be copied
-    // var textsToCopy = [];
-
-    // Loop over the <p> elements and add their text to the array
-    // pElements.forEach(function (pElement) {
-    //     textsToCopy.push(pElement.textContent.trim());
-    // });
-
-    // Join the texts with newlines and copy to the clipboard
+    var copy_cmd = e.target.id;
 
     try {
         cmd_for_resolve = [];
         if (copy_cmd === 'NodeUpCmd') {
-            cmd_for_resolve = [' Terminal length 0',  ' sh ver | i reload|up', ' sh cdp nei', ' sh env all', ' sh process cpu his' , 'sh clo', ''];
-
+            cmd_for_resolve = [' Terminal length 0', ' sh ver | i reload|up', ' sh cdp nei', ' sh env all', ' sh process cpu his', 'sh clo', ''];
         }
         else if (copy_cmd === 'hardwareUpCmd') {
-            cmd_for_resolve = [' Terminal length 0',  ' sh env all', ' sh logg | i fan', ' sh logg | i temp', ' sh logg | i power ', 'sh clo', ''];
-
+            cmd_for_resolve = [' Terminal length 0', ' sh env all', ' sh logg | i fan', ' sh logg | i temp', ' sh logg | i power ', 'sh clo', ''];
         }
         else if (copy_cmd === 'CPU_Cmd') {
             cmd_for_resolve = [' Terminal length 0', ' sh process cpu his ', 'sh clo', ''];
-
         }
         else if (copy_cmd === 'Node_Resolution_template') {
             cmd_for_resolve =
-                ['1.', 'Reason for Outage(RFO): Power issue', 'Impact:  ', 'Resolution Steps: ', ' -  Power restored. ', ' -  Device is up and stable. ',' Hence proceeding to closure of this incident. ', '_______________________________________________________________', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): The device went down due to a power issue', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
-
+                ['1.', 'Reason for Outage(RFO): Power issue', 'Impact:  ', 'Resolution Steps: ', ' -  Power restored. ', ' -  Device is up and stable. ', ' Hence proceeding to closure of this incident. ', '_______________________________________________________________', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): The device went down due to a power issue', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'Hardware_Resolution_template') {
-            cmd_for_resolve = ['1.','Reason for Outage(RFO): Hardware  was down due to power issue', 'Impact:  ', 'Resolution Steps: ', '--- Hardware status of the device is  working fine.', '--- Hence proceeding to closure of this incident.',  '_______________________________________________________________',  '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Hardware of the device was down due to power issue', 'Service(s) Impacted: LAN services', 'Impact:  ' , 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No' ];
-
+            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Hardware  was down due to power issue', 'Impact:  ', 'Resolution Steps: ', '--- Hardware status of the device is  working fine.', '--- Hence proceeding to closure of this incident.', '_______________________________________________________________', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Hardware of the device was down due to power issue', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'Interface_Resolution_template') {
-            cmd_for_resolve = ['1.','Reason for Outage(RFO): Interface is down maybe due to neighbour device is down.', 'Impact:  ', 'Resolution Steps: Interface is up.',' ','_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Interface is down maybe due to neighbour device is down','Service(s) Impacted: LAN services', 'Impact:  ' , 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No' ];
-
+            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Interface is down maybe due to neighbour device is down.', 'Impact:  ', 'Resolution Steps: Interface is up.', ' ', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Interface is down maybe due to neighbour device is down', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'CPU_Load_Resolution_template') {
-            cmd_for_resolve = ['1.','Reason for Outage(RFO): High CPU utilization', 'Impact:  ', 'Resolution Steps: ', '---CPU load is below 80% and utilization is normal.', '--- Hence proceeding to close the incident.',  '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: High CPU Load', 'Reason for Outage (RFO): CPU Load was above 80%', 'Service(s) Impacted: LAN services', 'Impact:  ' , 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No' ];
-
+            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): High CPU utilization', 'Impact:  ', 'Resolution Steps: ', '---CPU load is below 80% and utilization is normal.', '--- Hence proceeding to close the incident.', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: High CPU Load', 'Reason for Outage (RFO): CPU Load was above 80%', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
-        else{
+        else {
             cmd_for_resolve = ['No Text Copied!']
         }
+
         await navigator.clipboard.writeText(cmd_for_resolve.join('\n'));
-
-
-        // Display the banner
         showBanner();
     } catch (error) {
-        // An error occurred while trying to copy the text
         console.error('Error copying text: ', error);
     }
-
-
-    // alert("Text copied successfully!");
 }
 
+// Create buttons for each node/device
 function createNodesButtons(Nodes) {
-
-    
-    // Select the div with the class 'button-container'
     var nodesContainer = document.querySelector('.AllNodeButtons');
     while (nodesContainer.firstChild) {
         nodesContainer.removeChild(nodesContainer.firstChild);
     }
 
-
-    // Define the number of buttons you want to create
     var numberOfButtons = Nodes.length;
 
-    // Loop to create buttons
     for (let i = 0; i < numberOfButtons; i++) {
-        // Create a new button element
         var button = document.createElement('button');
         var portNo = document.createElement('button');
 
-        // Set the button's type to 'button'
         button.type = 'button';
         portNo.type = 'button';
-        // Set the button's text
+
         button.innerHTML = Nodes[i].Node_Name + '-' + Nodes[i].IP;
         portNo.innerHTML = "Status";
         portNo.style.color = 'lightgreen';
 
-
-        //  console.log(Nodes[i])
-
-        // Add a click event listener to the button
-        // We can use an Immediately Invoked Function Expression (IIFE) to create a new scope for each button.
+        // Copy interface commands
         button.addEventListener('click', function (Nodes) {
             return function () {
                 selectedButton(button, Nodes[i].Interfaces_Name, Nodes[i].Interfaces_Name.length);
             }
-
         }(Nodes));
 
+        // Copy status command
         portNo.addEventListener('click', function (Nodes) {
             return function () {
                 portNumberselectedButton(portNo, Nodes[i].Node_Name, Nodes[i].Interface_Port_Number, Nodes[i].Interface_Port_Number.length);
             }
-
         }(Nodes));
 
-
-        // Add the button to the button container
         nodesContainer.appendChild(button);
         nodesContainer.appendChild(portNo);
-        // alert(i)
-
     }
-
-
 }
 
+// Copy detailed interface commands
 async function selectedButton(button, Interfaces_Name, numberOfInterfaces) {
-    //  console.log(Nodes[i])
-
-
-    // Define the text you want to copy
     var INTF_CMD_TextToCopy = ''
     for (var j = 0; j < numberOfInterfaces; j++) {
-
         let interfaceName = Interfaces_Name[j];
         let lineBreak = ' \n\n ';
         let cmd1 = ' sh ' + interfaceName + '\n';
         let cmd2 = ' sh run ' + interfaceName + '\n';
         let cmd3 = ' sh logg | i ' + interfaceName.substr(interfaceName.indexOf(" ") + 1) + '\n';
         INTF_CMD_TextToCopy += cmd1 + lineBreak + cmd2 + lineBreak + cmd3 + lineBreak + lineBreak + lineBreak;
-        
-
     }
-    // console.log( INTF_CMD_TextToCopy)
-    INTF_CMD_TextToCopy = ' Terminal length 0 ' + '\n'+ INTF_CMD_TextToCopy;
-    // Copy the text to the clipboard
+
+    INTF_CMD_TextToCopy = ' Terminal length 0 ' + '\n' + INTF_CMD_TextToCopy;
+
     try {
-        // Copy the text to the clipboard
         await navigator.clipboard.writeText(INTF_CMD_TextToCopy);
 
-        // Create a span element to display the message
         var span = document.createElement('span');
         span.textContent = ' Detailed command copied for ' + numberOfInterfaces + ' interfaces';
         span.style.color = 'white';
@@ -317,42 +246,26 @@ async function selectedButton(button, Interfaces_Name, numberOfInterfaces) {
         span.style.borderRadius = '5px';
         span.style.position = 'fixed';
         span.style.top = '0';
-        span.style.left = '50%'; // Center the span
-        span.style.transform = 'translate(-50%, 0)'; // Ensure the center of the span is at the center of the page
-        span.style.zIndex = '1000'; // Ensure the span appears above other elements
-        // Add the span to the body of the document
-        document.body.appendChild(span);
-        // Add the span to the button
-        //   button.parentNode.insertBefore(span, button.nextSibling);
+        span.style.left = '50%';
+        span.style.transform = 'translate(-50%, 0)';
+        span.style.zIndex = '1000';
 
-        // Remove the span after 3 seconds
+        document.body.appendChild(span);
+
         setTimeout(function () {
             span.remove();
         }, 2000);
-        // The text has been copied to the clipboard
-        console.log('Text copied to clipboard');
     } catch (error) {
-        // An error occurred while trying to copy the text
         console.error('Error copying text: ', error);
     }
 }
 
-
+// Copy port status command
 async function portNumberselectedButton(portNumberButton, Node_Name, Interfaces_Ports_No, numberOfInterfaces) {
-    //  console.log(Nodes[i])
-    //     Interface Port-channel100
-    // Interface Port-channel101
-    // Interface TenGigabitEthernet1/1/15
-    // Interface TenGigabitEthernet1/1/26
-    // Interface Vlan810
-    // sh ip int br | i 100 |101 |1/1/15 |1/1/26 |Vlan810
-
-    // Define the text you want to copy
-
     var portNo = '';
     var showIp = 'sh ip int br | i ';
-    for (var j = 0; j < numberOfInterfaces; j++) {
 
+    for (var j = 0; j < numberOfInterfaces; j++) {
         if (j === numberOfInterfaces - 1) {
             portNo = Interfaces_Ports_No[j] + ' ';
             showIp += portNo;
@@ -360,257 +273,434 @@ async function portNumberselectedButton(portNumberButton, Node_Name, Interfaces_
         }
         portNo = Interfaces_Ports_No[j] + ' |';
         showIp += portNo;
-
     }
+
     var STATUS = showIp;
     showIp = '';
 
-    // Copy the text to the clipboard
     try {
-        // Copy the text to the clipboard
         await navigator.clipboard.writeText(STATUS);
 
-        // Create a span element to display the message
         var span = document.createElement('span');
-
         span.innerHTML = `Copied command- Get up/down status of ${numberOfInterfaces} interfaces for the device - <strong>${Node_Name}<strong/>`;
         span.style.color = 'lightgreen';
-         span.style.backgroundColor = 'black';
+        span.style.backgroundColor = 'black';
         span.style.border = '3px solid white';
         span.style.padding = '4px';
         span.style.font = 'bold'
         span.style.marginLeft = '5px';
         span.style.borderRadius = '5px';
         span.style.backgroundcolor = '#4CAF50';
-        // Style the span to appear at the top of the page
         span.style.position = 'fixed';
         span.style.top = '0';
-        span.style.left = '50%'; // Center the span
-        span.style.transform = 'translate(-50%, 0)'; // Ensure the center of the span is at the center of the page
-        span.style.zIndex = '1000'; // Ensure the span appears above other elements
-        // Add the span to the body of the document
+        span.style.left = '50%';
+        span.style.transform = 'translate(-50%, 0)';
+        span.style.zIndex = '1000';
+
         document.body.appendChild(span);
 
-        // Add the span to the button
-        //   portNumberButton.parentNode.insertBefore(span, portNumberButton.nextSibling);
-
-        // Remove the span after 3 seconds
         setTimeout(function () {
             span.remove();
         }, 3000);
-        // The text has been copied to the clipboard
-        console.log('Command copied to clipboard');
     } catch (error) {
-        // An error occurred while trying to copy the text
         console.error('Error copying text: ', error);
     }
 }
 
+// Check if text contains valid IP address
 function isIP_Found(currentInput) {
-
-    // let ipPattern = /\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}\b/gm;
     let ipPattern = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
-
-    // match(sentence) return all matched regex in a array, null otherwise
     let matches = currentInput.match(ipPattern);
-    // console.log(currentInput)
-    // console.log(matches == null)
+
     if (matches === null) {
         return false;
     }
     else {
-        // returning IP
         return matches[0];
     }
-
 }
 
+// Extract unique IPs and generate ping commands
 function print_all_IPs() {
     document.getElementById('result').value = "";
-    // var input = e.target.value
     var currentInput = document.getElementById('description').value.trim();
     IP_Box = "";
     IP_array = [];
-    let word = currentInput.replace(/\n/g, " ").split(' ')
-    //get devices details
-    word.forEach(function (device) {
-        // console.log(device +" -> "+isIP_Found(device))
-        if (isIP_Found(device) !== false) {
-                IP_array.push(isIP_Found(device));
-        }
 
+    let word = currentInput.replace(/\n/g, " ").split(' ')
+
+    // Extract all IPs
+    word.forEach(function (device) {
+        if (isIP_Found(device) !== false) {
+            IP_array.push(isIP_Found(device));
+        }
     })
 
-    // Create set of unique values using Set constructor
+    // Get unique IPs
     let s = new Set(IP_array);
-
     let unique_IPs = [...s];
+
     unique_IPs.forEach(function (ip) {
         let cmd = 'ping ' + ip + '\n';
         IP_Box += cmd;
     })
 
-
-   
-
     if (unique_IPs.length === 0) {
         document.getElementById('result').value = "No IP found";
-        // copyToClipboard();
         showBanner_IP(unique_IPs.length);
         return;
     }
+
     showBanner_IP(unique_IPs.length);
     document.getElementById('result').value = "cls" + '\n' + IP_Box;
+
     var result = document.getElementById('result');
     result.select();
     document.execCommand('copy');
-   // copyToClipboard();
 }
 
-// Check node up- down from terminal output
-function filter_node_Up_Down(){
+// Analyze ping output and show UP/DOWN devices
+function filter_node_Up_Down() {
     document.getElementById('result').value = "";
-    // var input = e.target.value
     pingedIP = false;
     var currentInput = document.getElementById('description').value.trim();
     let results = [];
+    let deviceMapping = {}; // Store device name -> IP mapping
     let lines = currentInput.split('\n');
     let currentIP = null;
 
+    // First pass: Extract device names from input
+    let currentDeviceName = null;
     lines.forEach(line => {
-        // console.log("Processing line:", line); // Debugging: Print each line
-        let ipMatch = line.match(/Pinging (\d+\.\d+\.\d+\.\d+)/);
-        if (ipMatch) {
-            currentIP = ipMatch[1];
-            // console.log("Found IP:", currentIP); // Debugging: Print the found IP
+        let trimmedLine = line.trim();
+
+        // Format 1: "Device: AU-JIM-EPCR-WAP16" (from auto-ping output)
+        if (trimmedLine.startsWith('Device:')) {
+            currentDeviceName = trimmedLine.substring(7).trim();
         }
-        let lossMatch = line.match(/Lost = \d+ \((\d+%) loss\)/);
-    
-        // console.log("Loss match result:", lossMatch); // Debugging: Print the match result
-        // console.log(lossMatch)
-        if (lossMatch && currentIP) {
-            pingedIP = true;
-            results.push({ IP: currentIP, loss: lossMatch[1] });
-            currentIP = null; // Reset for the next IP
+        // Format 2: "IP: 192.168.55.104" (from auto-ping output)
+        else if (trimmedLine.startsWith('IP:') && currentDeviceName) {
+            let ip = trimmedLine.substring(3).trim();
+            deviceMapping[ip] = currentDeviceName;
+            currentDeviceName = null;
+        }
+        // Format 3: "AU-JIM-EPCR-WAP16-192.168.55.104" (original device list)
+        else if (trimmedLine &&
+            !trimmedLine.includes('Pinging') &&
+            !trimmedLine.includes('Reply') &&
+            !trimmedLine.includes('Packets:') &&
+            !trimmedLine.includes('Ping statistics') &&
+            !trimmedLine.includes('Approximate') &&
+            !trimmedLine.includes('bytes of data') &&
+            !trimmedLine.includes('Minimum') &&
+            !trimmedLine.includes('===') &&
+            !trimmedLine.includes('TTL=')) {
+
+            let ip = isIP_Found(trimmedLine);
+            if (ip !== false) {
+                // Extract device name (everything before the IP)
+                let ipIndex = trimmedLine.indexOf(ip);
+                if (ipIndex > 0) {
+                    let deviceName = trimmedLine.substring(0, ipIndex).trim();
+                    deviceName = deviceName.replace(/-$/, '').trim();
+                    if (deviceName && deviceName.length > 2) {
+                        deviceMapping[ip] = deviceName;
+                    }
+                }
+            }
         }
     });
 
-    
-    // IP_Box = "";
-    // IP_OBJ = [];
-    // let str = currentInput.replace(/\n/g, " ").split(' ')
-    // // console.log(str)
-    // pingedIP = false;
-    // str.forEach(function (elem, index) {
-    //     // console.log(elem +" -> "+isIP_Found(elem))
-    //     if (isIP_Found(elem) !== false && str[index - 1] === "Pinging") {
-    //         pingedIP = true;
-    //         IP_OBJ.push({"IP": isIP_Found(elem), "IP_status": getLossPercentage(str[index + 37])  })
-    //     }
-    // })
-    // console.log(results);
+    // Second pass: Parse ping output
+    lines.forEach(line => {
+        let ipMatch = line.match(/Pinging (\d+\.\d+\.\d+\.\d+)/);
+        if (ipMatch) {
+            currentIP = ipMatch[1];
+        }
 
-    if(pingedIP === false){
-        document.getElementById('result').value = "Invalid! Please enter ping output from terminal";;
+        let lossMatch = line.match(/Lost = \d+ \((\d+%) loss\)/);
+        if (lossMatch && currentIP) {
+            pingedIP = true;
+            results.push({ IP: currentIP, loss: lossMatch[1], device: deviceMapping[currentIP] || null });
+            currentIP = null;
+        }
+    });
+
+    if (pingedIP === false) {
+        document.getElementById('result').value = "No ping output detected!\n\nTo use this feature:\n1. Click 'Generate Ping Commands'\n2. Copy and run the commands in your terminal\n3. Copy the ENTIRE terminal output\n4. Paste it here and click 'Analyze Ping Results' again";
         return;
     }
+
     if (results.length === 0) {
         document.getElementById('result').value = "No input found";
         return;
     }
+
     let listOfUP_node = getUpCounts(results);
-    // console.log(listOfUP_node)
     let listOfDOWN_node = getDownCounts(results);
+
     var res = "\n";
     res += "Total nodes count: " + results.length + '\n';
     res += "Up devices: " + listOfUP_node.upCount + '\n';
     res += "Down devices: " + listOfDOWN_node.downCount + '\n';
     res += '\n';
-    res += "-------> List of "+ listOfUP_node.upCount + " Up devices" + '\n';
+    res += "-------> List of " + listOfUP_node.upCount + " Up devices" + '\n';
     res += listOfUP_node.up_IP_list + '\n'
     res += "====================================" + '\n'
-    res += "-------> List of "  + listOfDOWN_node.downCount +" Down devices" + '\n';
+    res += "-------> List of " + listOfDOWN_node.downCount + " Down devices" + '\n';
     res += listOfDOWN_node.down_IP_list + '\n\n'
 
-    // showBanner_IP();
-    if(results.length === listOfUP_node.upCount){
+    if (results.length === listOfUP_node.upCount) {
         document.getElementById('result').value = `All ${listOfUP_node.upCount} devices are up.`;
     }
-    else if(results.length === listOfDOWN_node.downCount){
+    else if (results.length === listOfDOWN_node.downCount) {
         document.getElementById('result').value = `All ${listOfDOWN_node.downCount} devices are still down and unreachable.`
     }
-    else{
+    else {
         document.getElementById('result').value = res;
     }
-    
+
     var result = document.getElementById('result');
     result.select();
     document.execCommand('copy');
-    // console.log(IP_OBJ)
 }
 
-
-
-function getDownCounts(ip_obj){
+// Count and list DOWN devices
+function getDownCounts(ip_obj) {
     let count = 0;
     let DOWN_IP = "";
+
     ip_obj.forEach(function (obj, index) {
-        if(obj.loss === "100%" || obj.loss !== "0%"){ // In case loss is 25%, 50%, 75%, Consider down
+        if (obj.loss === "100%" || obj.loss !== "0%") {
             count++;
-            DOWN_IP += obj.IP + "\n";
-        } 
-        
+            if (obj.device) {
+                DOWN_IP += obj.device + " - " + obj.IP + "\n";
+            } else {
+                DOWN_IP += obj.IP + "\n";
+            }
+        }
     })
-    return {"down_IP_list": DOWN_IP, "downCount": count };
+
+    return { "down_IP_list": DOWN_IP, "downCount": count };
 }
 
-function getUpCounts(ip_obj){
+// Count and list UP devices
+function getUpCounts(ip_obj) {
     let count = 0;
     let UP_IP = "";
+
     ip_obj.forEach(function (obj, index) {
-        if(obj.loss === "0%"){
+        if (obj.loss === "0%") {
             count++;
-            UP_IP += obj.IP + "\n";
-        } 
-        
+            if (obj.device) {
+                UP_IP += obj.device + " - " + obj.IP + "\n";
+            } else {
+                UP_IP += obj.IP + "\n";
+            }
+        }
     })
-    return {"up_IP_list": UP_IP, "upCount": count };
+
+    return { "up_IP_list": UP_IP, "upCount": count };
 }
 
+// Show IP count banner
 function showBanner_IP(iplength) {
-     // Create a span element to display the message
-     var span = document.createElement('span');
-     span.innerHTML = `${iplength} IP`;
-     span.style.color = 'lightgreen';
-     span.style.backgroundColor = 'black';
-     span.style.border = '2px solid white';
-     span.style.padding = '4px';
-     span.style.font = 'bold'
-     span.style.marginLeft = '5px';
-     span.style.borderRadius = '5px';
-     span.style.backgroundcolor = '#4CAF50';
-     // Style the span to appear at the top of the page
-     span.style.position = 'fixed';
-     span.style.top = '40px';
-     span.style.left = '50%'; // Center the span
-     span.style.transform = 'translate(-50%, 0)'; // Ensure the center of the span is at the center of the page
-     span.style.zIndex = '1000'; // Ensure the span appears above other elements
-     // Add the span to the body of the document
-     document.body.appendChild(span);
-     // Add the span to the button
-    
-     // Remove the span after 3 seconds
-     setTimeout(function () {
-         span.remove();
-     }, 20000);
+    var span = document.createElement('span');
+    span.innerHTML = `${iplength} IP`;
+    span.style.color = 'lightgreen';
+    span.style.backgroundColor = 'black';
+    span.style.border = '2px solid white';
+    span.style.padding = '4px';
+    span.style.font = 'bold'
+    span.style.marginLeft = '5px';
+    span.style.borderRadius = '5px';
+    span.style.backgroundcolor = '#4CAF50';
+    span.style.position = 'fixed';
+    span.style.top = '40px';
+    span.style.left = '50%';
+    span.style.transform = 'translate(-50%, 0)';
+    span.style.zIndex = '1000';
 
+    document.body.appendChild(span);
+
+    setTimeout(function () {
+        span.remove();
+    }, 20000);
 }
 
+// Switch between pages
 function showPage(pageId) {
-    // Hide all pages
     const pages = document.querySelectorAll('.page');
     pages.forEach(page => page.classList.remove('active'));
-
-    // Show the selected page
     document.getElementById(pageId).classList.add('active');
+}
+
+// ===========================
+// AUTO PING (Python Eel)
+// ===========================
+
+// Exposed to Python for progress updates
+eel.expose(update_ping_progress);
+function update_ping_progress(current, total, current_ip) {
+    updatePingStatus(`Pinging ${current_ip}...`, current, total);
+}
+
+// Main auto-ping function
+async function autoPingIPs() {
+    document.getElementById('result').value = "";
+
+    var currentInput = document.getElementById('description').value.trim();
+    if (!currentInput) {
+        alert("Please enter text containing IP addresses first!");
+        return;
+    }
+
+    IP_array = [];
+    let deviceMapping = {}; // Store device name -> IP mapping
+    let lines = currentInput.split('\n');
+
+    // Extract IPs and device names
+    lines.forEach(function (line) {
+        let trimmedLine = line.trim();
+        if (trimmedLine) {
+            let ip = isIP_Found(trimmedLine);
+            if (ip !== false) {
+                IP_array.push(ip);
+
+                // Extract device name (everything before the IP)
+                let ipIndex = trimmedLine.indexOf(ip);
+                if (ipIndex > 0) {
+                    let deviceName = trimmedLine.substring(0, ipIndex).trim();
+                    // Remove trailing dash or hyphen
+                    deviceName = deviceName.replace(/-$/, '').trim();
+                    if (deviceName) {
+                        deviceMapping[ip] = deviceName;
+                    }
+                }
+            }
+        }
+    });
+
+    let s = new Set(IP_array);
+    let unique_IPs = [...s];
+
+    if (unique_IPs.length === 0) {
+        document.getElementById('result').value = "No IP addresses found in input!";
+        return;
+    }
+
+    // Show progress modal
+    showPingProgress(true);
+    updatePingStatus(`Found ${unique_IPs.length} unique IP addresses. Starting ping...`, 0, unique_IPs.length);
+
+    try {
+        // Call Python backend
+        let results = await eel.ping_multiple_ips(unique_IPs, 4, 10)();
+        processPingResults(results, deviceMapping);
+    } catch (error) {
+        showPingProgress(false);
+        alert("Error executing ping: " + error.message);
+        console.error("Ping execution error:", error);
+    }
+}
+
+// Show/hide progress modal
+function showPingProgress(show) {
+    let progressEl = document.getElementById('pingProgress');
+    if (progressEl) {
+        progressEl.style.display = show ? 'block' : 'none';
+    }
+}
+
+// Update progress status
+function updatePingStatus(message, current, total) {
+    let statusEl = document.getElementById('pingStatus');
+    if (statusEl) {
+        statusEl.innerText = message;
+    }
+
+    if (total > 0) {
+        let percentage = Math.round((current / total) * 100);
+
+        let progressBarEl = document.getElementById('pingProgressBar');
+        if (progressBarEl) {
+            progressBarEl.style.width = percentage + '%';
+        }
+
+        let percentageEl = document.getElementById('pingPercentage');
+        if (percentageEl) {
+            percentageEl.innerText = percentage + '%';
+        }
+
+        let detailsEl = document.getElementById('pingDetails');
+        if (detailsEl) {
+            detailsEl.innerText = `Completed: ${current} / ${total}`;
+        }
+    }
+}
+
+// Utility functions for UI buttons
+function copyText(elementId) {
+    var copyText = document.getElementById(elementId);
+    if (!copyText) return;
+
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); /* For mobile devices */
+    document.execCommand("copy");
+
+    // Optional: Visual feedback could be added here
+}
+
+function clearText(elementId) {
+    if (confirm('Are you sure you want to clear this text?')) {
+        document.getElementById(elementId).value = "";
+    }
+}
+
+// Process and display ping results
+function processPingResults(results, deviceMapping = {}) {
+    updatePingStatus("Processing results...", results.length, results.length);
+
+    if (results.length === 0) {
+        document.getElementById('result').value = "Error: Could not parse ping results.";
+        showPingProgress(false);
+        return;
+    }
+
+    // Build detailed output
+    var detailedOutput = "";
+
+    results.forEach((result, index) => {
+        detailedOutput += "====================================\n";
+
+        // Show device name if available
+        let deviceName = deviceMapping[result.ip];
+        if (deviceName) {
+            detailedOutput += `Device: ${deviceName}\n`;
+            detailedOutput += `IP: ${result.ip}\n`;
+        } else {
+            detailedOutput += `Pinging ${result.ip}\n`;
+        }
+
+        detailedOutput += "====================================\n\n";
+
+        if (result.full_output) {
+            detailedOutput += result.full_output + "\n\n";
+        } else {
+            detailedOutput += `No output available for ${result.ip}\n\n`;
+        }
+    });
+
+    document.getElementById('result').value = detailedOutput;
+
+    // Copy to clipboard
+    var resultEl = document.getElementById('result');
+    resultEl.select();
+    document.execCommand('copy');
+
+    // Hide progress
+    setTimeout(function () {
+        showPingProgress(false);
+        showBanner();
+    }, 1000);
 }
