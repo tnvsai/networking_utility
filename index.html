@@ -65,39 +65,51 @@
         </div>
 
         <div class="navbar-button">
-            <div class="template-section"
-                style="margin: 15px 0; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
-                <div class="section-header">
-                    Command Templates</div>
-                <div>
-                    <button class="cool-button" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
-                        Device
-                        <span class="hovertext">Click to copy for node up</span>
-                    </button>
-                    <button class="cool-button" type="button" id="hardwareUpCmd" onclick="copyNodeUpCmd(event)">
-                        Hardware
-                        <span class="hovertext">Click to copy for hardware related </span>
-                    </button>
-                    <button class="cool-button" type="button" id="Node_Resolution_template"
-                        onclick="copyNodeUpCmd(event)">
-                        Node
-                        <span class="hovertext">Click to copy for Node_Resolution_template</span>
-                    </button>
-                    <button class="cool-button" type="button" id="Hardware_Resolution_template"
-                        onclick="copyNodeUpCmd(event)">
-                        Hardware
-                        <span class="hovertext">Click to copy for Hardware_Resolution_template</span>
-                    </button>
-                    <button class="cool-button" type="button" id="Interface_Resolution_template"
-                        onclick="copyNodeUpCmd(event)">
-                        Interface
-                        <span class="hovertext">Click to copy for Interface_Resolution_template</span>
-                    </button>
-                    <button class="cool-button" type="button" id="CPU_Load_Resolution_template"
-                        onclick="copyNodeUpCmd(event)">
-                        CPU Load
-                        <span class="hovertext">Click to copy for High CPU utilization template</span>
-                    </button>
+            <!-- Container for split sections -->
+            <div style="display: flex; gap: 40px; margin: 15px 0;">
+
+                <!-- Commands Section -->
+                <div class="template-section"
+                    style="flex: 0 0 auto; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                    <div class="section-header">Commands</div>
+                    <div>
+                        <button class="cool-button" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
+                            Device
+                            <span class="hovertext">Click to copy for node up</span>
+                        </button>
+                        <button class="cool-button" type="button" id="hardwareUpCmd" onclick="copyNodeUpCmd(event)">
+                            Hardware
+                            <span class="hovertext">Click to copy for hardware related </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Templates Section -->
+                <div class="template-section"
+                    style="flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                    <div class="section-header">Templates</div>
+                    <div>
+                        <button class="cool-button" type="button" id="Node_Resolution_template"
+                            onclick="copyNodeUpCmd(event)">
+                            Node
+                            <span class="hovertext">Click to copy for Node_Resolution_template</span>
+                        </button>
+                        <button class="cool-button" type="button" id="Hardware_Resolution_template"
+                            onclick="copyNodeUpCmd(event)">
+                            Hardware
+                            <span class="hovertext">Click to copy for Hardware_Resolution_template</span>
+                        </button>
+                        <button class="cool-button" type="button" id="Interface_Resolution_template"
+                            onclick="copyNodeUpCmd(event)">
+                            Interface
+                            <span class="hovertext">Click to copy for Interface_Resolution_template</span>
+                        </button>
+                        <button class="cool-button" type="button" id="CPU_Load_Resolution_template"
+                            onclick="copyNodeUpCmd(event)">
+                            CPU Load
+                            <span class="hovertext">Click to copy for High CPU utilization template</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -157,10 +169,14 @@
             </div>
             <br>
             <div class="button-container">
-                <input type="button" value="Generate Ping Commands" onclick="print_all_IPs()">
-                <input type="button" value="Auto-Ping All IPs" onclick="autoPingIPs()" class="btn-gradient">
-                <input type="button" value="Analyze Ping Results" onclick="filter_node_Up_Down()">
-                <input type="button" value="Analyse Interface" onclick="print_all_Interfaces()">
+                <button type="button" onclick="print_all_IPs()"><i class="fas fa-terminal"></i> Generate Ping
+                    Commands</button>
+                <button type="button" onclick="autoPingIPs()"><i class="fas fa-satellite-dish"></i> Auto-Ping All
+                    IPs</button>
+                <button type="button" onclick="filter_node_Up_Down()"><i class="fas fa-chart-line"></i> Analyze Ping
+                    Results</button>
+                <button type="button" onclick="print_all_Interfaces()"><i class="fas fa-search"></i> Analyse
+                    Interface</button>
             </div>
         </form>
 
@@ -168,7 +184,7 @@
             <a href="https://github.com/tnvsai/networking_utility" target="_blank" title="Download latest version">
                 <i class="fab fa-github"></i> GitHub
             </a>
-            v1.2.0
+            v1.2.1
         </div>
     </div>
 

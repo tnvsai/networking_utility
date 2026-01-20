@@ -69,40 +69,53 @@ h2 {
 }
 
 /* Primary Buttons */
-input[type="button"] {
-    padding: 10px 20px;
+/* Primary Buttons (Bottom Row) */
+input[type="button"],
+.button-container button {
+    padding: 12px 24px;
     font-size: 14px;
-    border-radius: 5px;
-    border: none;
+    border-radius: 8px;
+    /* Standard rounded rectangle */
+    border: 1px solid var(--accent-color);
+    background-color: transparent;
+    color: var(--text-color);
     cursor: pointer;
-    min-width: 160px;
+    min-width: 180px;
     font-weight: bold;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-input[type="button"]:hover {
+input[type="button"]:hover,
+.button-container button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    background-color: var(--accent-color);
+    color: #000;
 }
 
 /* Secondary/Utility Buttons */
 .cool-button {
-    background-color: #3f51b5;
-    /* Blue */
-    color: white;
-    /* Keep buttons white even in light mode for contrast */
-    border: none;
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--accent-color);
     padding: 8px 16px;
     margin: 5px;
     cursor: pointer;
-    border-radius: 5px;
+    border-radius: 6px;
     position: relative;
     font-size: 13px;
-    transition: background-color 0.3s;
+    font-weight: 600;
+    transition: all 0.3s ease;
 }
 
 .cool-button:hover {
-    background-color: #303f9f;
+    background-color: var(--accent-color);
+    color: #000;
+    /* Contrast text on active state */
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+    transform: translateY(-1px);
 }
 
 .hovertext {
@@ -141,9 +154,24 @@ input[type="button"]:hover {
     color: var(--accent-color);
     font-weight: bold;
     padding: 5px;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: inline-block;
+}
+
+/* Glassmorphism for Sections */
+.template-section {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.template-section:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-color) !important;
 }
 
 /* Textarea Layout */
@@ -195,15 +223,34 @@ textarea {
 }
 
 /* Light Mode specific button borders for better visibility */
-body.light-mode input[type="button"] {
-    border: 1px solid #ccc;
-    background-color: #e0e0e0;
+/* Light Mode specific button borders for better visibility */
+body.light-mode input[type="button"],
+body.light-mode .button-container button {
+    border: 1px solid var(--accent-color);
+    background-color: transparent;
+    color: var(--accent-color);
+}
+
+body.light-mode input[type="button"]:hover,
+body.light-mode .button-container button:hover {
+    background-color: var(--accent-color);
+    color: white;
 }
 
 body.light-mode .btn-gradient {
-    border: 2px solid #007bff !important;
-    /* Blue border for main button in light mode */
-    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+    border: none !important;
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%) !important;
+}
+
+/* Light Mode Secondary Buttons */
+body.light-mode .cool-button {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+body.light-mode .cool-button:hover {
+    background-color: var(--accent-color);
+    color: white;
 }
 
 .btn-gradient:hover {
