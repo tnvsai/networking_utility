@@ -524,19 +524,7 @@ function getUpCounts(ip_obj) {
 function showBanner_IP(iplength) {
     var span = document.createElement('span');
     span.innerHTML = `${iplength} IP`;
-    span.style.color = 'lightgreen';
-    span.style.backgroundColor = 'black';
-    span.style.border = '2px solid white';
-    span.style.padding = '4px';
-    span.style.font = 'bold'
-    span.style.marginLeft = '5px';
-    span.style.borderRadius = '5px';
-    span.style.backgroundcolor = '#4CAF50';
-    span.style.position = 'fixed';
-    span.style.top = '40px';
-    span.style.left = '50%';
-    span.style.transform = 'translate(-50%, 0)';
-    span.style.zIndex = '1000';
+    span.className = 'ip-banner';
 
     document.body.appendChild(span);
 
@@ -677,6 +665,16 @@ function copyText(elementId) {
 function clearText(elementId) {
     if (confirm('Are you sure you want to clear this text?')) {
         document.getElementById(elementId).value = "";
+    }
+}
+
+async function pasteText(elementId) {
+    try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById(elementId).value = text;
+    } catch (err) {
+        console.error('Failed to read clipboard contents: ', err);
+        alert('Failed to read clipboard. Please check permissions or use Ctrl+V.');
     }
 }
 

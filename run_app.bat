@@ -3,7 +3,7 @@ setlocal
 title Network Utility Launcher
 
 echo ===================================================
-echo    Network Utility - Auto Setup & Launcher
+echo    Network Utility - Auto Setup and Launcher
 echo ===================================================
 echo.
 
@@ -18,13 +18,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: 2. Check Dependencies (Fast Start)
-echo [INFO] Checking dependencies...
-python -c "import eel; import ping3" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo [INFO] All dependencies present. Starting app instantly...
-    goto :run_app
-)
+:: 2. Check Dependencies (Skipped "Fast Check" to ensure updates are applied)
+:: We removed the auto-skip so it always enforces requirements.txt
+:: This ensures setuptools<81 is applied to fix the warning.
 
 :: 3. Install Dependencies (Only if missing)
 if not exist "requirements.txt" (
@@ -33,8 +29,8 @@ if not exist "requirements.txt" (
     exit /b 1
 )
 
-echo [INFO] Installing/Updating required packages...
-pip install -r requirements.txt
+echo [INFO] Verifying dependencies...
+python -m pip install -q -r requirements.txt >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to install dependencies.
     echo Please check your internet connection or pip configuration.

@@ -368,6 +368,12 @@ body.light-mode .action-btn:hover {
     border-color: #f44336;
 }
 
+.action-btn.paste-btn:hover {
+    background-color: rgba(33, 150, 243, 0.2);
+    color: #2196f3;
+    border-color: #2196f3;
+}
+
 /* Theme Toggle Switch */
 .theme-switch-wrapper {
     position: absolute;
@@ -441,6 +447,18 @@ input:checked+.slider:before {
     font-family: monospace;
 }
 
+.version-footer a {
+    color: var(--version-color);
+    text-decoration: none;
+    margin-right: 15px;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.version-footer a:hover {
+    color: var(--accent-color);
+}
+
 /* Auto-Ping Modal Styles */
 #pingProgress {
     display: none;
@@ -472,6 +490,28 @@ input:checked+.slider:before {
 #pingDetails {
     font-size: 14px;
     color: var(--modal-details);
+}
+
+.ip-banner {
+    color: lightgreen;
+    background-color: black;
+    border: 2px solid white;
+    padding: 4px;
+    font-weight: bold;
+    margin-left: 5px;
+    border-radius: 5px;
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    z-index: 1000;
+}
+
+body.light-mode .ip-banner {
+    color: #28a745;
+    background-color: #ffffff;
+    border: 2px solid #28a745;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .progress-track {

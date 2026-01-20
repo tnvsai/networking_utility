@@ -1,3 +1,7 @@
+import warnings
+# Suppress pkg_resources deprecation warning
+warnings.filterwarnings("ignore", category=UserWarning, module='eel')
+
 import eel
 import subprocess
 import platform
