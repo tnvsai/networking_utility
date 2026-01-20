@@ -13,6 +13,15 @@ desktop.ini
 *.swo
 *~
 
-# Temporary files
-*.tmp
-*.temp
+
+# Python
+__pycache__/
+*.py[cod]
+
+# PyInstaller
+build/
+dist/
+
+# VS Code
+.vscode/
+

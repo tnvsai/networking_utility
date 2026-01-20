@@ -24,7 +24,12 @@ def ping_ip(ip_address, count=4):
             command = ['ping', '-c', str(count), ip_address]
         
         # Execute ping
-        result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+        kwargs = {'capture_output': True, 'text': True, 'timeout': 60}
+        if system == 'windows':
+            # Prevent console window from popping up
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            
+        result = subprocess.run(command, **kwargs)
         output = result.stdout + result.stderr
         
         # Parse output for status
