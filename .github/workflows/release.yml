@@ -1,0 +1,45 @@
+name: Publish Stable Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release Executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Executable
+        run: pyinstaller NetworkingUtility.spec --clean
+
+      - name: Rename to Final Name
+        # Rename output to something user-friendly for release
+        run: Move-Item dist\NetworkingUtility.exe dist\NetworkingUtility-${{ github.ref_name }}.exe
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/NetworkingUtility-${{ github.ref_name }}.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: false
