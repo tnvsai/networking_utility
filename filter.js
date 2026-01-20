@@ -32,14 +32,24 @@ function print_all_Interfaces() {
         let cleanLine = line.trim();
         if (!cleanLine) return;
 
-        // Regex to find Port and Node
+        // Regex 1: Existing "Port X on Node Y" format
         // Handles: "Port 13", "Pert 20", "on Node:", "an Node:"
-        // Captures: Port Number (Group 1), Raw Node Name Section (Group 2)
-        let match = cleanLine.match(/(?:Port|Pert)\s+(\d+)\s+(?:on|an)\s+Node:\s*(.+)/i);
+        let matchPort = cleanLine.match(/(?:Port|Pert)\s+(\d+)\s+(?:on|an)\s+Node:\s*(.+)/i);
 
-        if (match) {
-            let port = match[1];
-            let rawNode = match[2];
+        // Regex 2: New "Interface: ... on Node: ... is Down" format
+        // Example: "Interface: TwentyFiveGigE2/0/15-Downlink... on Node: AU-GRM... is Down"
+        let matchInterface = cleanLine.match(/Interface:\s*(.+?)\s+on\s+Node:\s*(.+?)(?:\s+is\s+Down)?$/i);
+
+        if (matchPort || matchInterface) {
+            let interfaceName, rawNode;
+
+            if (matchPort) {
+                interfaceName = "Port " + matchPort[1];
+                rawNode = matchPort[2];
+            } else {
+                interfaceName = matchInterface[1].trim(); // Full interface string
+                rawNode = matchInterface[2];
+            }
 
             // Clean up Node Name
             // Remove "is Down" variations, handling space or hyphen separators
@@ -69,10 +79,13 @@ function print_all_Interfaces() {
             }
 
             let deviceObj = deviceMap.get(nodeName);
-            // Add interface (Format: "Port 13" or just "13"? Previous code used "Interface Port 13")
-            // Recreating "Interface Port <N>" format for consistency
-            deviceObj.Interfaces_Name.push("Port " + port);
-            deviceObj.Interface_Port_Number.push(port);
+
+            // Add interface to list
+            deviceObj.Interfaces_Name.push(interfaceName);
+            // For port number logic (status command), we might need to extract just the number if possible, 
+            // but for the new full string, we just treat the whole thing as the name.
+            // If it behaves as a port number elsewhere, we might need parsing, but for now we push the name.
+            deviceObj.Interface_Port_Number.push(interfaceName);
         }
     });
 
