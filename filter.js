@@ -185,7 +185,12 @@ async function copyNodeUpCmd(e) {
             cmd_for_resolve = ['No Text Copied!']
         }
 
-        await navigator.clipboard.writeText(cmd_for_resolve.join('\n'));
+        let finalCmd = cmd_for_resolve.join('\n');
+        await navigator.clipboard.writeText(finalCmd);
+
+        // Show in Output window as requested
+        document.getElementById('result').value = finalCmd;
+
         showBanner();
     } catch (error) {
         console.error('Error copying text: ', error);
@@ -364,7 +369,7 @@ function print_all_IPs() {
     }
 
     showBanner_IP(unique_IPs.length);
-    document.getElementById('result').value = "cls" + '\n' + IP_Box;
+    document.getElementById('result').value = IP_Box;
 
     var result = document.getElementById('result');
     result.select();
