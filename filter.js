@@ -787,3 +787,136 @@ document.addEventListener('DOMContentLoaded', (event) => {
         if (checkbox) checkbox.checked = true; // Switch ON for Dark
     }
 });
+// ===========================
+// QUICK NOTES FEATURE
+// ===========================
+
+let notesDebounceTimer;
+
+function toggleNotes() {
+    let modal = document.getElementById('notesModal');
+    if (modal.style.display === 'none') {
+        modal.style.display = 'flex';
+        // Focus cursor at end
+        let area = document.getElementById('quickNotesArea');
+        area.focus();
+    } else {
+        modal.style.display = 'none';
+    }
+}
+
+// Auto-save logic
+document.addEventListener('DOMContentLoaded', () => {
+    // Load notes on startup (Async with Retries)
+    setTimeout(async () => {
+        if (typeof eel !== 'undefined' && eel.load_notes) {
+            try {
+                let content = await eel.load_notes()();
+                if (content && content.length > 0) {
+                    document.getElementById('quickNotesArea').innerHTML = content;
+                }
+            } catch (e) {
+                console.error("Failed to load notes:", e);
+            }
+        }
+    }, 500); // Wait 500ms for Eel connection to stabilize
+
+    // Save on typing (Debounced)
+    document.getElementById('quickNotesArea').addEventListener('input', () => {
+        let status = document.getElementById('saveStatus');
+        status.innerText = "Saving...";
+
+        clearTimeout(notesDebounceTimer);
+        notesDebounceTimer = setTimeout(() => {
+            let content = document.getElementById('quickNotesArea').innerHTML;
+            if (typeof eel !== 'undefined' && eel.save_notes) {
+                eel.save_notes(content)((success) => {
+                    status.innerText = success ? "Saved" : "Error Saving";
+                    setTimeout(() => status.innerText = "Saved", 2000);
+                });
+            } else {
+                status.innerText = "Restart App to Save";
+            }
+        }, 1000); // Save after 1 second of inactivity
+    });
+    // Make Notes Draggable
+    makeElementDraggable(document.getElementById("notesModal"));
+});
+
+// Color Switcher Logic
+// Color Switcher Logic
+function setNoteColor(bgColor, headerColor) {
+    let selection = window.getSelection();
+    let noteArea = document.getElementById("quickNotesArea");
+
+    // Check if text is selected inside the notes area
+    if (selection.rangeCount > 0 && selection.toString().length > 0 && noteArea.contains(selection.anchorNode)) {
+        // Change Text Color
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('foreColor', false, headerColor);
+    } else {
+        // Change Background Color (Default)
+        let modal = document.getElementById("notesModal");
+        let header = modal.querySelector("div");
+
+        if (modal) modal.style.background = bgColor;
+        if (header) {
+            header.style.background = headerColor;
+            header.style.borderBottom = `1px solid ${headerColor}`;
+        }
+    }
+}
+
+// Clear Notes Logic
+function clearNotes() {
+    if (confirm("Are you sure you want to clear all notes?")) {
+        let area = document.getElementById('quickNotesArea');
+        area.value = "";
+        // Trigger save immediately
+        if (typeof eel !== 'undefined' && eel.save_notes) {
+            eel.save_notes("")((success) => {
+                let status = document.getElementById('saveStatus');
+                status.innerText = "Cleared";
+            });
+        }
+    }
+}
+
+// Drag Helper
+function makeElementDraggable(elmnt) {
+    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    // Move on header click
+    if (elmnt.querySelector("div")) {
+        elmnt.querySelector("div").onmousedown = dragMouseDown;
+    }
+
+    function dragMouseDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // Get mouse cursor position at startup
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // Calculate new cursor position
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        // Set element's new position
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        // Remove 'right' content to allow free movement
+        elmnt.style.right = "auto";
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+}

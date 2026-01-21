@@ -55,13 +55,48 @@
 
     <div class="main-wrapper">
         <!-- Theme Toggle Switch -->
-        <div class="theme-switch-wrapper">
-            <span class="mode-icon">☀️</span>
-            <label class="theme-switch" for="checkbox">
-                <input type="checkbox" id="checkbox" onchange="toggleTheme()" checked>
-                <div class="slider round"></div>
-            </label>
-            <span class="mode-icon">🌙</span>
+
+
+        <!-- Quick Notes Modal -->
+        <div id="notesModal"
+            style="display:none; position:fixed; top:80px; right:20px; width:350px; height:400px; background:#fff9c4; color:#333; z-index:2000; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3); flex-direction:column; overflow:hidden; border:1px solid #e6db74; resize:both; min-width:320px; min-height:200px;">
+            <div
+                style="padding:10px; background:#f0e68c; border-bottom:1px solid #e6db74; display:flex; justify-content:space-between; align-items:center; cursor:move;">
+                <b style="margin-right: auto; padding-left: 5px;"><i class="fas fa-pen"></i> Quick Notes</b>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <!-- Color Dots -->
+                    <div onclick="setNoteColor('#fff9c4', '#f0e68c')"
+                        style="width:15px; height:15px; background:#fff9c4; border-radius:50%; border:1px solid #e6db74; cursor:pointer;"
+                        title="Yellow"></div>
+                    <div onclick="setNoteColor('#ffcdd2', '#ef9a9a')"
+                        style="width:15px; height:15px; background:#ffcdd2; border-radius:50%; border:1px solid #ef5350; cursor:pointer;"
+                        title="Red (Critical)"></div>
+                    <div onclick="setNoteColor('#bbdefb', '#90caf9')"
+                        style="width:15px; height:15px; background:#bbdefb; border-radius:50%; border:1px solid #42a5f5; cursor:pointer;"
+                        title="Blue (Info)"></div>
+                    <!-- New Colors -->
+                    <div onclick="setNoteColor('#ffffff', '#e0e0e0')"
+                        style="width:15px; height:15px; background:#ffffff; border-radius:50%; border:1px solid #bdbdbd; cursor:pointer;"
+                        title="White (Clean)"></div>
+                    <div onclick="setNoteColor('#333333', '#000000')"
+                        style="width:15px; height:15px; background:#333333; border-radius:50%; border:1px solid #000000; cursor:pointer;"
+                        title="Black (Dark)"></div>
+
+                    <!-- Trash Button -->
+                    <button onclick="clearNotes()"
+                        style="background:none; border:none; cursor:pointer; font-size:1rem; color:#555; margin-left:10px;"
+                        title="Clear All"><i class="fas fa-trash-alt"></i></button>
+                    <!-- Close Button -->
+                    <button onclick="toggleNotes()"
+                        style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:#555;">&times;</button>
+                </div>
+            </div>
+            <div id="quickNotesArea" contenteditable="true"
+                style="flex:1; width:100%; border:none; padding:10px; background:transparent; resize:none; outline:none; font-family:monospace; overflow-y:auto; white-space:pre-wrap;">
+            </div>
+            <div id="saveStatus"
+                style="font-size:10px; text-align:right; padding:5px; color:#666; background:rgba(0,0,0,0.05);">Saved
+            </div>
         </div>
 
         <div class="navbar-button">
@@ -116,6 +151,27 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Theme Toggle Switch & Notes (Row Layout - Top Right Absolute) -->
+        <div class="theme-switch-wrapper"
+            style="flex-direction: row; align-items: center; gap: 15px; position: absolute; top: 20px; right: 20px;">
+            <!-- Quick Notes Toggle (Left) -->
+            <button onclick="toggleNotes()" class="icon-button" title="Quick Notes"
+                style="height: 28px; padding: 0 12px; border-radius: 14px; background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); border: 1px solid rgba(255,255,255,0.2); color: var(--accent-color); display: flex; align-items: center; justify-content: center;gap: 6px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+                <i class="fas fa-edit" style="font-size: 0.9rem;"></i>
+                <span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap;">Quick Notes</span>
+            </button>
+
+            <!-- Theme Switch (Right) -->
+            <div style="display: flex; align-items: center;">
+                <span class="mode-icon">☀️</span>
+                <label class="theme-switch" for="checkbox">
+                    <input type="checkbox" id="checkbox" onchange="toggleTheme()" checked>
+                    <div class="slider round"></div>
+                </label>
+                <span class="mode-icon">🌙</span>
             </div>
         </div>
 
@@ -189,7 +245,7 @@
             <a href="https://github.com/tnvsai/networking_utility" target="_blank" title="Download latest version">
                 <i class="fab fa-github"></i> GitHub
             </a>
-            v1.2.4
+            v1.2.5
             <br>
             <span style="font-size: 11px; opacity: 0.7;">Feel free to update code according to project need</span>
         </div>

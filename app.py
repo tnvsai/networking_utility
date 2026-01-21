@@ -6,10 +6,14 @@ import eel
 import subprocess
 import platform
 import re
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Initialize Eel to serve from current directory
 eel.init('.')
+
+# Set absolute path for notes file
+NOTES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'quick_notes.txt')
 
 @eel.expose
 def ping_ip(ip_address, count=4):
@@ -138,6 +142,31 @@ def get_system_info():
         'os_version': platform.version(),
         'python_version': platform.python_version()
     }
+
+
+@eel.expose
+def save_notes(content):
+    """Save quick notes to a file"""
+    try:
+        with open(NOTES_FILE, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return True
+    except Exception as e:
+        print(f"Error saving notes: {e}")
+        return False
+
+
+@eel.expose
+def load_notes():
+    """Load quick notes from file"""
+    try:
+        if os.path.exists(NOTES_FILE):
+            with open(NOTES_FILE, 'r', encoding='utf-8') as f:
+                return f.read()
+        return ""
+    except Exception as e:
+        print(f"Error loading notes: {e}")
+        return ""
 
 
 # Start app
