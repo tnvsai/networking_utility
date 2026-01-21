@@ -52,6 +52,14 @@ def ping_ip(ip_address, count=4):
             else:
                 sent, received, lost, loss_percent = count, 0, count, '100%'
         
+        # Simulate command prompt
+        import os
+        user_home = os.path.expanduser('~')
+        # user_home = "hello" #replace with your user name if needed
+        prompt = f"PS {user_home}> ping {ip_address}"
+        
+        full_output = f"{prompt}\n\n{output.strip()}"
+        
         return {
             'ip': ip_address,
             'success': True,
@@ -59,7 +67,7 @@ def ping_ip(ip_address, count=4):
             'sent': sent,
             'received': received,
             'lost': lost,
-            'full_output': output.strip()
+            'full_output': full_output
         }
         
     except subprocess.TimeoutExpired:

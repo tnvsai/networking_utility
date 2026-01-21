@@ -26,68 +26,46 @@ function print_all_Interfaces() {
     var deviceMap = new Map(); // Use Map to group by Node Name
 
     // Normalize input to handle common typos and inconsistencies
-    let lines = currentInput.split('\n');
+    // Split by newline OR period to handle "Alert 1. Alert 2." on same line
+    // Global Regex Approach: Scan entire text for patterns regardless of line breaks
 
-    lines.forEach(line => {
-        let cleanLine = line.trim();
-        if (!cleanLine) return;
+    // Consolidated Global Regex: Handles duplicates, typos, and variations in one pass
+    // Structure: (Prefix or Lookahead) (Interface Name) (Divider) (Node Name) (Lookahead End)
+    let regexGlobal = /(?:(?:Interfa[cs]es?|Intfs?)\s*:\s*|(?=(?:Port|Pert)\s))(.+?)\s+(?:on|an)\s+Node:\s*([^\n\.]+?)(?=\s*(?:is\s+Down|[\n\.]|$))/gi;
 
-        // Regex 1: Existing "Port X on Node Y" format
-        // Handles: "Port 13", "Pert 20", "on Node:", "an Node:"
-        let matchPort = cleanLine.match(/(?:Port|Pert)\s+(\d+)\s+(?:on|an)\s+Node:\s*(.+)/i);
+    // Shared processor function (embedded)
+    let match;
+    while ((match = regexGlobal.exec(currentInput)) !== null) {
+        let interfaceName = match[1].trim();
+        let rawNode = match[2];
 
-        // Regex 2: New "Interface: ... on Node: ... is Down" format
-        // Example: "Interface: TwentyFiveGigE2/0/15-Downlink... on Node: AU-GRM... is Down"
-        let matchInterface = cleanLine.match(/Interface:\s*(.+?)\s+on\s+Node:\s*(.+?)(?:\s+is\s+Down)?$/i);
+        // Clean up Node Name
+        let nodeName = rawNode
+            .replace(/[- ]+(?:is|an|31s|3is|6is|IS)(?:[- ]+Downs?)?/i, '')
+            .replace(/[- ]+Downs?$/i, '')
+            .replace(/[\.,;]+$/, '')
+            .replace(/-+$/, '')
+            .trim();
 
-        if (matchPort || matchInterface) {
-            let interfaceName, rawNode;
+        // Fix spaces
+        nodeName = nodeName.replace(/\s+/g, '-');
+        nodeName = nodeName.toUpperCase();
 
-            if (matchPort) {
-                interfaceName = "Port " + matchPort[1];
-                rawNode = matchPort[2];
-            } else {
-                interfaceName = matchInterface[1].trim(); // Full interface string
-                rawNode = matchInterface[2];
-            }
+        if (nodeName.length < 3) continue;
 
-            // Clean up Node Name
-            // Remove "is Down" variations, handling space or hyphen separators
-            // Handles: " is Down", "-is-Down", " 31s Down", "-31s-Down" etc.
-            let nodeName = rawNode
-                .replace(/[- ]+(?:is|an|31s|3is|6is|IS)(?:[- ]+Downs?)?/i, '') // Remove "is Down" typo variations with aggressive separator match
-                .replace(/[- ]+Downs?$/i, '') // Remove trailing "Down" if not caught above
-                .replace(/[\.,;]+$/, '') // Remove trailing punctuation
-                .replace(/-+$/, '') // Remove trailing hyphens (if any left from aggressive replacements)
-                .trim();
-
-            // Fix spaces in node name (assume they should be hyphens based on user examples)
-            // e.g., "BMA VT-BPV" -> "BMA-VT-BPV"
-            nodeName = nodeName.replace(/\s+/g, '-');
-
-            // Formatting: Upper case for consistency
-            nodeName = nodeName.toUpperCase();
-
-            // Store in Map
-            if (!deviceMap.has(nodeName)) {
-                deviceMap.set(nodeName, {
-                    Node_Name: nodeName,
-                    IP: "N/A", // IP not provided in this format
-                    Interfaces_Name: [],
-                    Interface_Port_Number: []
-                });
-            }
-
-            let deviceObj = deviceMap.get(nodeName);
-
-            // Add interface to list
-            deviceObj.Interfaces_Name.push(interfaceName);
-            // For port number logic (status command), we might need to extract just the number if possible, 
-            // but for the new full string, we just treat the whole thing as the name.
-            // If it behaves as a port number elsewhere, we might need parsing, but for now we push the name.
-            deviceObj.Interface_Port_Number.push(interfaceName);
+        // Store in Map
+        if (!deviceMap.has(nodeName)) {
+            deviceMap.set(nodeName, {
+                Node_Name: nodeName,
+                IP: "N/A",
+                Interfaces_Name: [],
+                Interface_Port_Number: []
+            });
         }
-    });
+        let deviceObj = deviceMap.get(nodeName);
+        deviceObj.Interfaces_Name.push(interfaceName);
+        deviceObj.Interface_Port_Number.push(interfaceName);
+    }
 
     // Convert Map back to Array for existing logic compatibility
     deviceBox = Array.from(deviceMap.values());
@@ -176,7 +154,7 @@ async function copyNodeUpCmd(e) {
             cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Hardware  was down due to power issue', 'Impact:  ', 'Resolution Steps: ', '--- Hardware status of the device is  working fine.', '--- Hence proceeding to closure of this incident.', '_______________________________________________________________', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Hardware of the device was down due to power issue', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'Interface_Resolution_template') {
-            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Interface is down maybe due to neighbour device is down.', 'Impact:  ', 'Resolution Steps: Interface is up.', ' ', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Interface is down maybe due to neighbour device is down', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
+            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Interface is down maybe due to neighbour device is down.', 'Impact:  ', 'Resolution Steps:', '--Interface is up.', '--Hence, proceding to close the incident.', ' ', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Interface is down maybe due to neighbour device is down', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'CPU_Load_Resolution_template') {
             cmd_for_resolve = ['1.', 'Reason for Outage(RFO): High CPU utilization', 'Impact:  ', 'Resolution Steps: ', '---CPU load is below 80% and utilization is normal.', '--- Hence proceeding to close the incident.', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: High CPU Load', 'Reason for Outage (RFO): CPU Load was above 80%', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
@@ -360,8 +338,8 @@ function isIP_Found(currentInput) {
 function print_all_IPs() {
     document.getElementById('result').value = "";
     var currentInput = document.getElementById('description').value.trim();
-    IP_Box = "";
-    IP_array = [];
+    let IP_Box = "";
+    let IP_array = [];
 
     let word = currentInput.replace(/\n/g, " ").split(' ')
 
@@ -430,7 +408,9 @@ function filter_node_Up_Down() {
             !trimmedLine.includes('bytes of data') &&
             !trimmedLine.includes('Minimum') &&
             !trimmedLine.includes('===') &&
-            !trimmedLine.includes('TTL=')) {
+            !trimmedLine.includes('TTL=') &&
+            !trimmedLine.includes('> ping') && // Exclude prompt
+            !trimmedLine.startsWith('PS ')) {
 
             let ip = isIP_Found(trimmedLine);
             if (ip !== false) {
@@ -442,6 +422,24 @@ function filter_node_Up_Down() {
                     if (deviceName && deviceName.length > 2) {
                         deviceMapping[ip] = deviceName;
                     }
+                }
+            }
+        }
+
+
+        // Format 4: "PS ...> ping 1.2.3.4" (Raw Terminal Prompt)
+        // Even without the device name comment, we should recognize this line as containing the IP.
+        let psMatch = trimmedLine.match(/PS\s+.*>\s*ping\s+(\d+\.\d+\.\d+\.\d+)/i);
+        if (psMatch) {
+            let ipInLine = psMatch[1];
+            if (ipInLine) {
+                // If we have a pending device name from a previous header, map it.
+                if (currentDeviceName) {
+                    deviceMapping[ipInLine] = currentDeviceName;
+                    currentDeviceName = null;
+                } else {
+                    // Just mark this IP as present so we can track it later
+                    // (If no device name found, it will just show as null in final results)
                 }
             }
         }
@@ -486,15 +484,7 @@ function filter_node_Up_Down() {
     res += "-------> List of " + listOfDOWN_node.downCount + " Down devices" + '\n';
     res += listOfDOWN_node.down_IP_list + '\n\n'
 
-    if (results.length === listOfUP_node.upCount) {
-        document.getElementById('result').value = `All ${listOfUP_node.upCount} devices are up.`;
-    }
-    else if (results.length === listOfDOWN_node.downCount) {
-        document.getElementById('result').value = `All ${listOfDOWN_node.downCount} devices are still down and unreachable.`
-    }
-    else {
-        document.getElementById('result').value = res;
-    }
+    document.getElementById('result').value = res;
 
     var result = document.getElementById('result');
     result.select();
@@ -711,9 +701,9 @@ function processPingResults(results, deviceMapping = {}) {
     var detailedOutput = "";
 
     results.forEach((result, index) => {
+        // Header Block
         detailedOutput += "====================================\n";
 
-        // Show device name if available
         let deviceName = deviceMapping[result.ip];
         if (deviceName) {
             detailedOutput += `Device: ${deviceName}\n`;
@@ -725,7 +715,9 @@ function processPingResults(results, deviceMapping = {}) {
         detailedOutput += "====================================\n\n";
 
         if (result.full_output) {
-            detailedOutput += result.full_output + "\n\n";
+            let finalOutput = result.full_output;
+
+            detailedOutput += finalOutput + "\n\n";
         } else {
             detailedOutput += `No output available for ${result.ip}\n\n`;
         }
