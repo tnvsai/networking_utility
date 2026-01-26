@@ -154,7 +154,7 @@ async function copyNodeUpCmd(e) {
             cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Hardware  was down due to power issue', 'Impact:  ', 'Resolution Steps: ', '--- Hardware status of the device is  working fine.', '--- Hence proceeding to closure of this incident.', '_______________________________________________________________', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Hardware of the device was down due to power issue', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'Interface_Resolution_template') {
-            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Interface is down maybe due to neighbour device is down.', 'Impact:  ', 'Resolution Steps:', '--Interface is up.', '--Hence, proceding to close the incident.', ' ', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Interface is down maybe due to neighbour device is down', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
+            cmd_for_resolve = ['1.', 'Reason for Outage(RFO): Interface is down maybe due to neighbour device is down.', 'Impact:  ', 'Resolution Steps:', '--Interface is up.', '--Hence, proceeding to close the incident.', ' ', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: Power issue', 'Reason for Outage (RFO): Interface is down maybe due to neighbour device is down', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
         }
         else if (copy_cmd === 'CPU_Load_Resolution_template') {
             cmd_for_resolve = ['1.', 'Reason for Outage(RFO): High CPU utilization', 'Impact:  ', 'Resolution Steps: ', '---CPU load is below 80% and utilization is normal.', '--- Hence proceeding to close the incident.', '_______________________________________________________________', ' ', '2.', 'SLA: Met', 'Breached Reason: NA', 'Vendor/Telco Details: NA', 'Case No: NA', 'Incident Category: High CPU Load', 'Reason for Outage (RFO): CPU Load was above 80%', 'Service(s) Impacted: LAN services', 'Impact:  ', 'Customer confirmation on RFO awareness: No', 'Customer confirmation on restoration of normal operations: No'];
@@ -871,7 +871,7 @@ function setNoteColor(bgColor, headerColor) {
 function clearNotes() {
     if (confirm("Are you sure you want to clear all notes?")) {
         let area = document.getElementById('quickNotesArea');
-        area.value = "";
+        area.innerHTML = "";
         // Trigger save immediately
         if (typeof eel !== 'undefined' && eel.save_notes) {
             eel.save_notes("")((success) => {
