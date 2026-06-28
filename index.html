@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
     <meta name="google-adsense-account" content="ca-pub-8835983411485108">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-QT3X9W3H8H"></script>
     <script>
@@ -16,16 +17,24 @@
     <link rel="icon" type="image/png" href="icon.png">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="floral-theme.css">
+    <link rel="stylesheet" href="theme-elements.css">
 
     <script>
+        // Allow the native context menu inside editable fields (so right-click
+        // Copy/Paste works in the input/output boxes and notes); block elsewhere.
         document.addEventListener("contextmenu", function (e) {
+            var el = e.target;
+            var tag = el.tagName;
+            if (tag === 'TEXTAREA' || tag === 'INPUT' || el.isContentEditable) {
+                return;
+            }
             e.preventDefault();
         }, false);
 
         document.addEventListener("keydown", function (e) {
-            if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'i')) {
+            if (e.ctrlKey && (e.key === 'u' || e.key === 'i')) {
                 e.preventDefault();
             }
         }, false);
@@ -37,13 +46,16 @@
 
 </head>
 
-<body>
+<body data-theme="dark">
+    <!-- Decorative background layer (scanlines, mesh gradient, grid, etc.) -->
+    <div class="theme-bg" aria-hidden="true"></div>
+
     <div id="banner">Copied</div>
 
     <!-- Auto-Ping Progress Modal -->
-    <div id="pingProgress">
-        <h3>Auto-Ping in Progress...</h3>
-        <div id="pingStatus">Preparing to ping...</div>
+    <div id="pingProgress" role="dialog" aria-modal="true" aria-labelledby="pingProgressTitle" aria-hidden="true">
+        <h3 id="pingProgressTitle">Auto-Ping in Progress...</h3>
+        <div id="pingStatus" role="status" aria-live="polite">Preparing to ping...</div>
         <div id="pingDetails"></div>
         <div style="margin-top:20px;">
             <div class="progress-track">
@@ -51,138 +63,127 @@
             </div>
             <div id="pingPercentage">0%</div>
         </div>
+        <button type="button" id="stopPingBtn" class="ping-stop-btn" onclick="stopAutoPing()" disabled
+            aria-label="Stop auto-ping">
+            <i class="fas fa-stop"></i> Stop Ping
+        </button>
     </div>
 
     <div class="main-wrapper">
-        <!-- Theme Toggle Switch -->
-
+        <!-- App Header / Branding Bar -->
+        <header class="app-header">
+            <div class="app-title"><i class="fas fa-moon" id="appTitleIcon"></i> Networking Utility</div>
+            <div class="app-tagline">IP extraction &bull; bulk ping &bull; interface &amp; incident triage</div>
+        </header>
 
         <!-- Quick Notes Modal -->
-        <div id="notesModal"
-            style="display:none; position:fixed; top:80px; right:20px; width:350px; height:400px; background:#fff9c4; color:#333; z-index:2000; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3); flex-direction:column; overflow:hidden; border:1px solid #e6db74; resize:both; min-width:320px; min-height:200px;">
-            <div
-                style="padding:10px; background:#f0e68c; border-bottom:1px solid #e6db74; display:flex; justify-content:space-between; align-items:center; cursor:move;">
-                <b style="margin-right: auto; padding-left: 5px;"><i class="fas fa-pen"></i> Quick Notes</b>
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <!-- Color Dots -->
-                    <div onclick="setNoteColor('#fff9c4', '#f0e68c')"
-                        style="width:15px; height:15px; background:#fff9c4; border-radius:50%; border:1px solid #e6db74; cursor:pointer;"
-                        title="Yellow"></div>
-                    <div onclick="setNoteColor('#ffcdd2', '#ef9a9a')"
-                        style="width:15px; height:15px; background:#ffcdd2; border-radius:50%; border:1px solid #ef5350; cursor:pointer;"
-                        title="Red (Critical)"></div>
-                    <div onclick="setNoteColor('#bbdefb', '#90caf9')"
-                        style="width:15px; height:15px; background:#bbdefb; border-radius:50%; border:1px solid #42a5f5; cursor:pointer;"
-                        title="Blue (Info)"></div>
-                    <!-- New Colors -->
-                    <div onclick="setNoteColor('#ffffff', '#e0e0e0')"
-                        style="width:15px; height:15px; background:#ffffff; border-radius:50%; border:1px solid #bdbdbd; cursor:pointer;"
-                        title="White (Clean)"></div>
-                    <div onclick="setNoteColor('#333333', '#000000')"
-                        style="width:15px; height:15px; background:#333333; border-radius:50%; border:1px solid #000000; cursor:pointer;"
-                        title="Black (Dark)"></div>
-
-                    <!-- Trash Button -->
-                    <button onclick="clearNotes()"
-                        style="background:none; border:none; cursor:pointer; font-size:1rem; color:#555; margin-left:10px;"
-                        title="Clear All"><i class="fas fa-trash-alt"></i></button>
-                    <!-- Close Button -->
-                    <button onclick="toggleNotes()"
-                        style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:#555;">&times;</button>
+        <div id="notesModal" class="notes-modal" style="display:none;">
+            <div class="notes-modal-header">
+                <b class="notes-modal-title"><i class="fas fa-pen"></i> Quick Notes</b>
+                <div class="notes-color-dots">
+                    <button type="button" class="notes-color-dot" onclick="setNoteColor('#fff9c4', '#f0e68c')"
+                        style="--dot-bg:#fff9c4; --dot-border:#e6db74;" title="Yellow"></button>
+                    <button type="button" class="notes-color-dot" onclick="setNoteColor('#ffcdd2', '#ef9a9a')"
+                        style="--dot-bg:#ffcdd2; --dot-border:#ef5350;" title="Red (Critical)"></button>
+                    <button type="button" class="notes-color-dot" onclick="setNoteColor('#bbdefb', '#90caf9')"
+                        style="--dot-bg:#bbdefb; --dot-border:#42a5f5;" title="Blue (Info)"></button>
+                    <button type="button" class="notes-color-dot" onclick="setNoteColor('#ffffff', '#e0e0e0')"
+                        style="--dot-bg:#ffffff; --dot-border:#bdbdbd;" title="White"></button>
+                    <button type="button" class="notes-color-dot" onclick="setNoteColor('#333333', '#1a1a1a')"
+                        style="--dot-bg:#333333; --dot-border:#000000;" title="Black"></button>
+                    <button type="button" class="notes-icon-btn" onclick="resetNotesTheme()" title="Match current theme">
+                        <i class="fas fa-palette"></i></button>
+                    <button type="button" class="notes-icon-btn" onclick="clearNotes()" title="Clear All">
+                        <i class="fas fa-trash-alt"></i></button>
+                    <button type="button" class="notes-icon-btn notes-close-btn" onclick="toggleNotes()" title="Close">&times;</button>
                 </div>
             </div>
-            <div id="quickNotesArea" contenteditable="true"
-                style="flex:1; width:100%; border:none; padding:10px; background:transparent; resize:none; outline:none; font-family:monospace; overflow-y:auto; white-space:pre-wrap;">
-            </div>
-            <div id="saveStatus"
-                style="font-size:10px; text-align:right; padding:5px; color:#666; background:rgba(0,0,0,0.05);">Saved
-            </div>
+            <div id="quickNotesArea" class="notes-modal-body" contenteditable="true"></div>
+            <div id="saveStatus" class="notes-modal-footer">Saved</div>
         </div>
 
-        <div class="navbar-button">
-            <!-- Container for split sections -->
-            <div style="display: flex; gap: 40px; margin: 15px 0;">
-
-                <!-- Commands Section -->
-                <div class="template-section"
-                    style="flex: 0 0 auto; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
-                    <div class="section-header">Commands</div>
-                    <div>
-                        <button class="cool-button" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
-                            Device
-                            <span class="hovertext">Click to copy for node up</span>
-                        </button>
-                        <button class="cool-button" type="button" id="hardwareUpCmd" onclick="copyNodeUpCmd(event)">
-                            Hardware
-                            <span class="hovertext">Click to copy for hardware related </span>
-                        </button>
-                    </div>
+        <!-- Collapsible Commands & Templates toolbar -->
+        <div class="toolbar-section collapsed" id="toolbarSection">
+            <button type="button" class="toolbar-toggle" id="toolbarToggle" aria-expanded="false"
+                aria-controls="toolbarPanel" onclick="toggleToolbar()">
+                <i class="fas fa-chevron-down toolbar-chevron" aria-hidden="true"></i>
+                <span>Commands &amp; Templates</span>
+                <span class="toolbar-hint">click to expand</span>
+            </button>
+            <div class="toolbar-panel" id="toolbarPanel">
+                <div class="toolbar-group">
+                    <span class="toolbar-group-label">Commands</span>
+                    <button class="cool-button cool-button--compact" type="button" id="NodeUpCmd" onclick="copyNodeUpCmd(event)">
+                        Device
+                        <span class="hovertext">Click to copy for node up</span>
+                    </button>
+                    <button class="cool-button cool-button--compact" type="button" id="hardwareUpCmd" onclick="copyNodeUpCmd(event)">
+                        Hardware
+                        <span class="hovertext">Click to copy for hardware related</span>
+                    </button>
                 </div>
-
-                <!-- Templates Section -->
-                <div class="template-section"
-                    style="flex: 1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid #333;">
-                    <div class="section-header">Templates</div>
-                    <div>
-                        <button class="cool-button" type="button" id="Node_Resolution_template"
-                            onclick="copyNodeUpCmd(event)">
-                            Node
-                            <span class="hovertext">Click to copy for Node_Resolution_template</span>
-                        </button>
-                        <button class="cool-button" type="button" id="Hardware_Resolution_template"
-                            onclick="copyNodeUpCmd(event)">
-                            Hardware
-                            <span class="hovertext">Click to copy for Hardware_Resolution_template</span>
-                        </button>
-                        <button class="cool-button" type="button" id="Interface_Resolution_template"
-                            onclick="copyNodeUpCmd(event)">
-                            Interface
-                            <span class="hovertext">Click to copy for Interface_Resolution_template</span>
-                        </button>
-                        <button class="cool-button" type="button" id="CPU_Load_Resolution_template"
-                            onclick="copyNodeUpCmd(event)">
-                            CPU Load
-                            <span class="hovertext">Click to copy for High CPU utilization template</span>
-                        </button>
-                        <button class="cool-button" type="button" id="Village_Resolution_template"
-                            onclick="copyNodeUpCmd(event)">
-                            Village
-                            <span class="hovertext">Click to copy for Village_Resolution_template</span>
-                        </button>
-                    </div>
+                <div class="toolbar-group toolbar-group--wide">
+                    <span class="toolbar-group-label">Templates</span>
+                    <button class="cool-button cool-button--compact" type="button" id="Node_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Node
+                        <span class="hovertext">Click to copy for Node_Resolution_template</span>
+                    </button>
+                    <button class="cool-button cool-button--compact" type="button" id="Hardware_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Hardware
+                        <span class="hovertext">Click to copy for Hardware_Resolution_template</span>
+                    </button>
+                    <button class="cool-button cool-button--compact" type="button" id="Interface_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Interface
+                        <span class="hovertext">Click to copy for Interface_Resolution_template</span>
+                    </button>
+                    <button class="cool-button cool-button--compact" type="button" id="CPU_Load_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        CPU Load
+                        <span class="hovertext">Click to copy for High CPU utilization template</span>
+                    </button>
+                    <button class="cool-button cool-button--compact" type="button" id="Village_Resolution_template"
+                        onclick="copyNodeUpCmd(event)">
+                        Village
+                        <span class="hovertext">Click to copy for Village_Resolution_template</span>
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Theme Toggle Switch & Notes (Row Layout - Top Right Absolute) -->
-        <div class="theme-switch-wrapper"
-            style="flex-direction: row; align-items: center; gap: 15px; position: absolute; top: 75px; right: 20px;">
-            <!-- Quick Notes Toggle (Left) -->
-            <button onclick="toggleNotes()" class="icon-button" title="Quick Notes"
-                style="height: 28px; padding: 0 12px; border-radius: 14px; background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); border: 1px solid rgba(255,255,255,0.2); color: var(--accent-color); display: flex; align-items: center; justify-content: center;gap: 6px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-                <i class="fas fa-edit" style="font-size: 0.9rem;"></i>
-                <span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap;">Quick Notes</span>
+        <div class="theme-switch-wrapper">
+            <button onclick="toggleNotes()" class="icon-button quick-notes-btn" title="Quick Notes">
+                <i class="fas fa-edit"></i>
+                <span>Quick Notes</span>
             </button>
 
-            <!-- Theme Switch (Right) -->
-            <div style="display: flex; align-items: center;">
-                <span class="mode-icon">☀️</span>
-                <label class="theme-switch" for="checkbox">
-                    <input type="checkbox" id="checkbox" onchange="toggleTheme()" checked>
-                    <div class="slider round"></div>
-                </label>
-                <span class="mode-icon">🌙</span>
+            <!-- Theme Selector -->
+            <div class="theme-select" role="group" aria-label="Theme">
+                <button type="button" class="theme-opt" data-theme="dark" onclick="setTheme('dark')"
+                    title="Night" aria-label="Night dark theme"><i class="fas fa-moon"></i></button>
+                <button type="button" class="theme-opt" data-theme="light" onclick="setTheme('light')"
+                    title="Light" aria-label="Light theme"><i class="fas fa-sun"></i></button>
+                <button type="button" class="theme-opt" data-theme="floral" onclick="setTheme('floral')"
+                    title="JC" aria-label="JC theme"><i class="fas fa-seedling"></i></button>
             </div>
+            <span class="theme-current-label" id="themeCurrentLabel" aria-live="polite"></span>
         </div>
 
-        <form style="background-color: transparent;">
+        <form id="mainForm" style="background-color: transparent;" aria-busy="false">
 
             <div class="textarea-container">
                 <div class="div-50">
 
                     <label for="description">
                         <div class="label-container">
-                            <b>Input</b>
+                            <div class="label-title-row">
+                                <b>Input</b>
+                                <span id="ipCountBadge" class="ip-count-badge ip-count-badge--empty" role="status"
+                                    aria-live="polite">0 IPs detected</span>
+                            </div>
                             <div style="display: flex; align-items: center;">
                                 <div id="tooltip">i
                                     <span class="tooltiptext">
@@ -192,12 +193,9 @@
                                     </span>
                                 </div>
                                 <button class="action-btn clear-btn" type="button"
-                                    onclick="clearText('description')">🗑️
-                                    Clear</button>
-                                <button class="action-btn paste-btn" type="button" onclick="pasteText('description')">📋
-                                    Paste</button>
-                                <button class="action-btn copy-btn" type="button" onclick="copyText('description')">📋
-                                    Copy</button>
+                                    onclick="clearText('description')"><i class="fas fa-trash-alt"></i> Clear</button>
+                                <button class="action-btn paste-btn" type="button" onclick="pasteText('description')"><i class="fas fa-paste"></i> Paste</button>
+                                <button class="action-btn copy-btn" type="button" onclick="copyText('description')"><i class="fas fa-copy"></i> Copy</button>
                             </div>
                         </div>
                     </label>
@@ -210,30 +208,25 @@
                         <div class="label-container">
                             <b>Output</b>
                             <div>
-                                <button class="action-btn clear-btn" type="button" onclick="clearText('result')">🗑️
-                                    Clear</button>
-                                <button class="action-btn copy-btn" type="button" onclick="copyText('result')">📋
-                                    Copy</button>
+                                <button class="action-btn clear-btn" type="button" onclick="clearText('result')"><i class="fas fa-trash-alt"></i> Clear</button>
+                                <button class="action-btn copy-btn" type="button" onclick="copyText('result')"><i class="fas fa-copy"></i> Copy</button>
                             </div>
                         </div>
                     </label>
                     <textarea id="result" name="result" rows="13" readonly
                         placeholder="Results will appear here..."></textarea>
 
-                    <!-- Interface Analysis Buttons Container -->
-                    <div style="margin-top: 10px;">
-                        <b id="titleButtons" style="color: aquamarine;"></b>
-                        <div class="AllNodeButtons"></div>
-                    </div>
+                    <!-- Color-coded Ping Result Summary (populated by ping analysis / auto-ping) -->
+                    <div id="resultPanel" class="result-panel" style="display:none;"></div>
                 </div>
 
             </div>
-            <br>
             <div class="button-container">
                 <button type="button" onclick="print_all_IPs()"><i class="fas fa-terminal"></i> Generate Ping
                     Commands</button>
-                <button type="button" onclick="autoPingIPs()"><i class="fas fa-satellite-dish"></i> Auto-Ping All
-                    IPs</button>
+                <button id="autoPingBtn" type="button" onclick="autoPingIPs()"
+                    aria-label="Auto-ping all IPs in input"><i class="fas fa-satellite-dish"></i>
+                    Auto-Ping All IPs</button>
                 <button type="button" onclick="filter_node_Up_Down()"><i class="fas fa-chart-line"></i> Analyze Ping
                     Results</button>
                 <button type="button" onclick="print_all_Interfaces()"><i class="fas fa-search"></i> Analyse

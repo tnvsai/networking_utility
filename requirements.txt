@@ -1,3 +1,2 @@
 Eel
-ping3
 setuptools<81

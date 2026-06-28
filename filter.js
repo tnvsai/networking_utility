@@ -3,21 +3,206 @@
 // Main logic for IP extraction, ping analysis, and interface parsing
 // ===========================
 
-// Extract port number from interface name
-function get_Interface_Port_Number(interface_Port_Number) {
-    if (interface_Port_Number.toLowerCase().startsWith("port-channel")) {
-        return interface_Port_Number.substring(12);
+// Copy text to the clipboard using the modern API, falling back to the
+// legacy execCommand approach (and the result box) if it isn't available.
+function copyToClipboardText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).catch(function () {
+            legacyCopyResultBox();
+        });
     }
-    else if (interface_Port_Number.toLowerCase().startsWith("vlan")) {
-        return interface_Port_Number;
-    }
-    else if (interface_Port_Number.match(/\w+(\d+.*)/)) {
-        let match = interface_Port_Number.match(/\w+(\d+.*)/);
-        return match ? match[1] : interface_Port_Number;
+    legacyCopyResultBox();
+    return Promise.resolve();
+}
+
+function legacyCopyResultBox() {
+    var result = document.getElementById('result');
+    if (!result) return;
+    result.select();
+    try {
+        document.execCommand('copy');
+    } catch (e) {
+        console.error('Clipboard copy failed:', e);
     }
 }
 
-var isClickingFirstTime = true;
+// Escape text before injecting into the result panel (device names come from user input)
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Hide the color-coded summary panel (used by non-ping features)
+function hideResultPanel() {
+    let panel = document.getElementById('resultPanel');
+    if (panel) {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+    }
+}
+
+// Render a color-coded UP/DOWN summary above the raw output
+function renderResultPanel(upList, downList) {
+    let panel = document.getElementById('resultPanel');
+    if (!panel) return;
+
+    let total = upList.length + downList.length;
+    if (total === 0) {
+        hideResultPanel();
+        return;
+    }
+
+    function buildList(items) {
+        if (items.length === 0) {
+            return '<div class="empty-note">None</div>';
+        }
+        return '<ul>' + items.map(function (i) {
+            return '<li>' + escapeHtml(i) + '</li>';
+        }).join('') + '</ul>';
+    }
+
+    panel.innerHTML =
+        '<div class="stats-row">' +
+        '<div class="stat-chip total">Total<b>' + total + '</b></div>' +
+        '<div class="stat-chip up">Up<b>' + upList.length + '</b></div>' +
+        '<div class="stat-chip down">Down<b>' + downList.length + '</b></div>' +
+        '</div>' +
+        '<div class="status-cols">' +
+        '<div class="status-col up-col"><h4>Up (' + upList.length + ')</h4>' + buildList(upList) + '</div>' +
+        '<div class="status-col down-col"><h4>Down (' + downList.length + ')</h4>' + buildList(downList) + '</div>' +
+        '</div>';
+
+    panel.style.display = 'block';
+}
+
+// Toggle busy/disabled state across the UI during auto-ping
+var pingInProgress = false;
+var pingAbortRequested = false;
+
+function setButtonsBusy(isBusy) {
+    pingInProgress = isBusy;
+
+    var form = document.getElementById('mainForm');
+    if (form) {
+        form.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    }
+
+    document.querySelectorAll('.button-container button:not(#autoPingBtn)').forEach(function (btn) {
+        btn.disabled = isBusy;
+    });
+
+    document.querySelectorAll('.cool-button, .action-btn, .quick-notes-btn, .theme-opt').forEach(function (btn) {
+        btn.disabled = isBusy;
+    });
+
+    var toolbarToggle = document.getElementById('toolbarToggle');
+    if (toolbarToggle) {
+        toolbarToggle.disabled = isBusy;
+    }
+
+    var autoBtn = document.getElementById('autoPingBtn');
+    if (autoBtn) {
+        if (isBusy) {
+            if (!autoBtn.dataset.label) {
+                autoBtn.dataset.label = autoBtn.innerHTML;
+            }
+            autoBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Ping';
+            autoBtn.disabled = false;
+            autoBtn.classList.add('ping-stop-mode');
+            autoBtn.setAttribute('aria-label', 'Stop auto-ping');
+        } else if (autoBtn.dataset.label) {
+            autoBtn.innerHTML = autoBtn.dataset.label;
+            delete autoBtn.dataset.label;
+            autoBtn.disabled = false;
+            autoBtn.classList.remove('ping-stop-mode');
+            autoBtn.setAttribute('aria-label', 'Auto-ping all IPs in input');
+        }
+    }
+
+    var stopModalBtn = document.getElementById('stopPingBtn');
+    if (stopModalBtn) {
+        stopModalBtn.disabled = !isBusy;
+        if (!isBusy) {
+            stopModalBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Ping';
+        }
+    }
+
+    var progressEl = document.getElementById('pingProgress');
+    if (progressEl) {
+        progressEl.setAttribute('aria-hidden', isBusy ? 'false' : 'true');
+    }
+}
+
+// Return every IPv4 address found anywhere in free-form text (global scan)
+function extractAllIPs(text) {
+    if (!text) {
+        return [];
+    }
+    var octet = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+    var ipPattern = new RegExp('\\b' + octet + '(?:\\.' + octet + '){3}\\b', 'g');
+    return text.match(ipPattern) || [];
+}
+
+// Unique IPs preserving first-seen order — single source of truth for all features
+function extractUniqueIPs(text) {
+    return [...new Set(extractAllIPs(text))];
+}
+
+// Count unique IPv4 addresses in free-form text (same logic as Generate Ping Commands)
+function countUniqueIPs(text) {
+    return extractUniqueIPs(text).length;
+}
+
+function updateIpCountBadge() {
+    var badge = document.getElementById('ipCountBadge');
+    var textarea = document.getElementById('description');
+    if (!badge || !textarea) {
+        return;
+    }
+
+    var count = countUniqueIPs(textarea.value);
+    badge.textContent = count === 1 ? '1 IP detected' : count + ' IPs detected';
+    badge.classList.toggle('ip-count-badge--empty', count === 0);
+    badge.classList.toggle('ip-count-badge--ready', count > 0);
+}
+
+function initIpCountWatcher() {
+    var textarea = document.getElementById('description');
+    if (!textarea) {
+        return;
+    }
+
+    textarea.addEventListener('input', updateIpCountBadge);
+    textarea.addEventListener('paste', function () {
+        setTimeout(updateIpCountBadge, 0);
+    });
+    updateIpCountBadge();
+}
+
+function toggleToolbar(forceExpanded) {
+    var section = document.getElementById('toolbarSection');
+    var toggle = document.getElementById('toolbarToggle');
+    if (!section || !toggle) {
+        return;
+    }
+
+    var expanded = typeof forceExpanded === 'boolean'
+        ? forceExpanded
+        : section.classList.contains('collapsed');
+
+    section.classList.toggle('collapsed', !expanded);
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    localStorage.setItem('toolbarExpanded', expanded ? '1' : '0');
+}
+
+function initToolbar() {
+    var expanded = localStorage.getItem('toolbarExpanded') === '1';
+    toggleToolbar(expanded);
+}
 
 // Parse interface down alerts and generate summary
 function print_all_Interfaces() {
@@ -68,7 +253,7 @@ function print_all_Interfaces() {
     }
 
     // Convert Map back to Array for existing logic compatibility
-    deviceBox = Array.from(deviceMap.values());
+    let deviceBox = Array.from(deviceMap.values());
     let total_Count = deviceBox.reduce((sum, device) => sum + device.Interfaces_Name.length, 0);
 
     // Build Output
@@ -98,53 +283,35 @@ function print_all_Interfaces() {
 
     document.getElementById('result').value = finalOutput;
 
-    // Clear previous buttons/titles if any
-    let titleBtn = document.getElementById('titleButtons');
-    if (titleBtn) {
-        titleBtn.innerText = "";
-    }
-
-    var nodesContainer = document.querySelector('.AllNodeButtons');
-    if (nodesContainer) {
-        while (nodesContainer.firstChild) {
-            nodesContainer.removeChild(nodesContainer.firstChild);
-        }
-    }
+    // Interface analysis is text-only; hide the ping summary panel
+    hideResultPanel();
 
     return deviceBox;
-}
-
-// Copy result to clipboard
-function copyToClipboard() {
-    var result = document.getElementById('result');
-    result.select();
-    document.execCommand('copy');
-    showBanner();
 }
 
 // Show copy banner notification
 function showBanner() {
     var banner = document.getElementById('banner');
-    banner.style.display = 'block';
-    setTimeout(function () {
-        banner.style.display = 'none';
-    }, 500);
+    banner.classList.add('banner-visible');
+    clearTimeout(banner._hideTimer);
+    banner._hideTimer = setTimeout(function () {
+        banner.classList.remove('banner-visible');
+    }, 1500);
 }
 
 // Copy predefined command templates
 async function copyNodeUpCmd(e) {
-    var copy_cmd = e.target.id;
+    // Use currentTarget so clicking the inner hovertext span still resolves
+    // to the button's id rather than an empty/incorrect target.
+    var copy_cmd = e.currentTarget.id;
 
     try {
-        cmd_for_resolve = [];
+        let cmd_for_resolve = [];
         if (copy_cmd === 'NodeUpCmd') {
             cmd_for_resolve = [' Terminal length 0', ' sh ver | i reload|up', ' sh cdp nei', ' sh env all', ' sh process cpu his', 'sh clo', ''];
         }
         else if (copy_cmd === 'hardwareUpCmd') {
             cmd_for_resolve = [' Terminal length 0', ' sh env all', ' sh logg | i fan', ' sh logg | i temp', ' sh logg | i power ', 'sh clo', ''];
-        }
-        else if (copy_cmd === 'CPU_Cmd') {
-            cmd_for_resolve = [' Terminal length 0', ' sh process cpu his ', 'sh clo', ''];
         }
         else if (copy_cmd === 'Node_Resolution_template') {
             cmd_for_resolve =
@@ -194,136 +361,10 @@ async function copyNodeUpCmd(e) {
     }
 }
 
-// Create buttons for each node/device
-function createNodesButtons(Nodes) {
-    var nodesContainer = document.querySelector('.AllNodeButtons');
-    while (nodesContainer.firstChild) {
-        nodesContainer.removeChild(nodesContainer.firstChild);
-    }
-
-    var numberOfButtons = Nodes.length;
-
-    for (let i = 0; i < numberOfButtons; i++) {
-        var button = document.createElement('button');
-        var portNo = document.createElement('button');
-
-        button.type = 'button';
-        portNo.type = 'button';
-
-        button.innerHTML = Nodes[i].Node_Name + '-' + Nodes[i].IP;
-        portNo.innerHTML = "Status";
-        portNo.style.color = 'lightgreen';
-
-        // Copy interface commands
-        button.addEventListener('click', function (Nodes) {
-            return function () {
-                selectedButton(button, Nodes[i].Interfaces_Name, Nodes[i].Interfaces_Name.length);
-            }
-        }(Nodes));
-
-        // Copy status command
-        portNo.addEventListener('click', function (Nodes) {
-            return function () {
-                portNumberselectedButton(portNo, Nodes[i].Node_Name, Nodes[i].Interface_Port_Number, Nodes[i].Interface_Port_Number.length);
-            }
-        }(Nodes));
-
-        nodesContainer.appendChild(button);
-        nodesContainer.appendChild(portNo);
-    }
-}
-
-// Copy detailed interface commands
-async function selectedButton(button, Interfaces_Name, numberOfInterfaces) {
-    var INTF_CMD_TextToCopy = ''
-    for (var j = 0; j < numberOfInterfaces; j++) {
-        let interfaceName = Interfaces_Name[j];
-        let lineBreak = ' \n\n ';
-        let cmd1 = ' sh ' + interfaceName + '\n';
-        let cmd2 = ' sh run ' + interfaceName + '\n';
-        let cmd3 = ' sh logg | i ' + interfaceName.substr(interfaceName.indexOf(" ") + 1) + '\n';
-        INTF_CMD_TextToCopy += cmd1 + lineBreak + cmd2 + lineBreak + cmd3 + lineBreak + lineBreak + lineBreak;
-    }
-
-    INTF_CMD_TextToCopy = ' Terminal length 0 ' + '\n' + INTF_CMD_TextToCopy;
-
-    try {
-        await navigator.clipboard.writeText(INTF_CMD_TextToCopy);
-
-        var span = document.createElement('span');
-        span.textContent = ' Detailed command copied for ' + numberOfInterfaces + ' interfaces';
-        span.style.color = 'white';
-        span.style.backgroundColor = 'blue';
-        span.style.border = '3px solid green';
-        span.style.padding = '5px';
-        span.style.marginLeft = '10px';
-        span.style.borderRadius = '5px';
-        span.style.position = 'fixed';
-        span.style.top = '0';
-        span.style.left = '50%';
-        span.style.transform = 'translate(-50%, 0)';
-        span.style.zIndex = '1000';
-
-        document.body.appendChild(span);
-
-        setTimeout(function () {
-            span.remove();
-        }, 2000);
-    } catch (error) {
-        console.error('Error copying text: ', error);
-    }
-}
-
-// Copy port status command
-async function portNumberselectedButton(portNumberButton, Node_Name, Interfaces_Ports_No, numberOfInterfaces) {
-    var portNo = '';
-    var showIp = 'sh ip int br | i ';
-
-    for (var j = 0; j < numberOfInterfaces; j++) {
-        if (j === numberOfInterfaces - 1) {
-            portNo = Interfaces_Ports_No[j] + ' ';
-            showIp += portNo;
-            break;
-        }
-        portNo = Interfaces_Ports_No[j] + ' |';
-        showIp += portNo;
-    }
-
-    var STATUS = showIp;
-    showIp = '';
-
-    try {
-        await navigator.clipboard.writeText(STATUS);
-
-        var span = document.createElement('span');
-        span.innerHTML = `Copied command- Get up/down status of ${numberOfInterfaces} interfaces for the device - <strong>${Node_Name}<strong/>`;
-        span.style.color = 'lightgreen';
-        span.style.backgroundColor = 'black';
-        span.style.border = '3px solid white';
-        span.style.padding = '4px';
-        span.style.font = 'bold'
-        span.style.marginLeft = '5px';
-        span.style.borderRadius = '5px';
-        span.style.backgroundcolor = '#4CAF50';
-        span.style.position = 'fixed';
-        span.style.top = '0';
-        span.style.left = '50%';
-        span.style.transform = 'translate(-50%, 0)';
-        span.style.zIndex = '1000';
-
-        document.body.appendChild(span);
-
-        setTimeout(function () {
-            span.remove();
-        }, 3000);
-    } catch (error) {
-        console.error('Error copying text: ', error);
-    }
-}
-
-// Check if text contains valid IP address
+// Check if text contains a valid IPv4 address (octets 0-255) and return it
 function isIP_Found(currentInput) {
-    let ipPattern = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
+    let octet = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+    let ipPattern = new RegExp('\\b' + octet + '(?:\\.' + octet + '){3}\\b');
     let matches = currentInput.match(ipPattern);
 
     if (matches === null) {
@@ -337,46 +378,30 @@ function isIP_Found(currentInput) {
 // Extract unique IPs and generate ping commands
 function print_all_IPs() {
     document.getElementById('result').value = "";
+    hideResultPanel();
     var currentInput = document.getElementById('description').value.trim();
-    let IP_Box = "";
-    let IP_array = [];
 
-    let word = currentInput.replace(/\n/g, " ").split(' ')
-
-    // Extract all IPs
-    word.forEach(function (device) {
-        if (isIP_Found(device) !== false) {
-            IP_array.push(isIP_Found(device));
-        }
-    })
-
-    // Get unique IPs
-    let s = new Set(IP_array);
-    let unique_IPs = [...s];
-
-    unique_IPs.forEach(function (ip) {
-        let cmd = 'ping ' + ip + '\n';
-        IP_Box += cmd;
-    })
+    let unique_IPs = extractUniqueIPs(currentInput);
 
     if (unique_IPs.length === 0) {
         document.getElementById('result').value = "No IP found";
-        showBanner_IP(unique_IPs.length);
+        showBanner_IP(0);
         return;
     }
+
+    let IP_Box = unique_IPs.map(function (ip) { return 'ping ' + ip; }).join('\n') + '\n';
 
     showBanner_IP(unique_IPs.length);
     document.getElementById('result').value = IP_Box;
 
-    var result = document.getElementById('result');
-    result.select();
-    document.execCommand('copy');
+    copyToClipboardText(IP_Box);
 }
 
 // Analyze ping output and show UP/DOWN devices
 function filter_node_Up_Down() {
     document.getElementById('result').value = "";
-    pingedIP = false;
+    hideResultPanel();
+    let pingedIP = false;
     var currentInput = document.getElementById('description').value.trim();
     let results = [];
     let deviceMapping = {}; // Store device name -> IP mapping
@@ -445,17 +470,32 @@ function filter_node_Up_Down() {
         }
     });
 
-    // Second pass: Parse ping output
+    // Second pass: Parse ping output (handles both Windows and Unix/macOS formats)
     lines.forEach(line => {
-        let ipMatch = line.match(/Pinging (\d+\.\d+\.\d+\.\d+)/);
+        // Identify which IP is currently being pinged.
+        // Windows: "Pinging x.x.x.x" | Unix: "PING x.x.x.x" | prompt: "...> ping x.x.x.x"
+        let ipMatch = line.match(/Pinging (\d+\.\d+\.\d+\.\d+)/)
+            || line.match(/PING (\d+\.\d+\.\d+\.\d+)/)
+            || line.match(/>\s*ping\s+(\d+\.\d+\.\d+\.\d+)/i);
         if (ipMatch) {
             currentIP = ipMatch[1];
         }
 
-        let lossMatch = line.match(/Lost = \d+ \((\d+%) loss\)/);
-        if (lossMatch && currentIP) {
+        // Extract packet loss percentage.
+        // Windows: "Lost = N (X% loss)" | Unix/macOS: "X% packet loss" (may be decimal)
+        let lossNum = null;
+        let winLoss = line.match(/Lost = \d+ \((\d+)% loss\)/);
+        let nixLoss = line.match(/([\d.]+)% packet loss/);
+        if (winLoss) {
+            lossNum = parseFloat(winLoss[1]);
+        } else if (nixLoss) {
+            lossNum = parseFloat(nixLoss[1]);
+        }
+
+        if (lossNum !== null && !isNaN(lossNum) && currentIP) {
             pingedIP = true;
-            results.push({ IP: currentIP, loss: lossMatch[1], device: deviceMapping[currentIP] || null });
+            let lossStr = lossNum === 0 ? "0%" : Math.round(lossNum) + "%";
+            results.push({ IP: currentIP, loss: lossStr, device: deviceMapping[currentIP] || null });
             currentIP = null;
         }
     });
@@ -486,9 +526,16 @@ function filter_node_Up_Down() {
 
     document.getElementById('result').value = res;
 
-    var result = document.getElementById('result');
-    result.select();
-    document.execCommand('copy');
+    // Color-coded summary panel
+    let upArr = results
+        .filter(function (r) { return r.loss === "0%"; })
+        .map(function (r) { return r.device ? r.device + " - " + r.IP : r.IP; });
+    let downArr = results
+        .filter(function (r) { return r.loss !== "0%"; })
+        .map(function (r) { return r.device ? r.device + " - " + r.IP : r.IP; });
+    renderResultPanel(upArr, downArr);
+
+    copyToClipboardText(res);
 }
 
 // Count and list DOWN devices
@@ -497,7 +544,7 @@ function getDownCounts(ip_obj) {
     let DOWN_IP = "";
 
     ip_obj.forEach(function (obj, index) {
-        if (obj.loss === "100%" || obj.loss !== "0%") {
+        if (obj.loss !== "0%") {
             count++;
             if (obj.device) {
                 DOWN_IP += obj.device + " - " + obj.IP + "\n";
@@ -542,25 +589,27 @@ function showBanner_IP(iplength) {
     }, 20000);
 }
 
-// Switch between pages
-function showPage(pageId) {
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => page.classList.remove('active'));
-    document.getElementById(pageId).classList.add('active');
-}
-
 // ===========================
 // AUTO PING (Python Eel)
 // ===========================
 
-// Exposed to Python for progress updates
-eel.expose(update_ping_progress);
+// Exposed to Python for progress updates (guard: eel.js must load first)
+if (typeof eel !== 'undefined') {
+    eel.expose(update_ping_progress);
+}
 function update_ping_progress(current, total, current_ip) {
-    updatePingStatus(`Pinging ${current_ip}...`, current, total);
+    if (pingAbortRequested) {
+        return;
+    }
+    updatePingStatus('Pinging ' + current_ip + '...', current, total);
 }
 
 // Main auto-ping function
 async function autoPingIPs() {
+    if (pingInProgress) {
+        return stopAutoPing();
+    }
+
     // Check if Eel is available (Desktop App)
     if (typeof eel === 'undefined') {
         alert("⚠️ Feature Not Available in Browser\n\nAuto-Ping requires access to the system terminal, which browsers block for security.\n\nPlease use the desktop app (run_app.bat) for this feature.\n\nFor now, click 'Generate Ping Commands' instead!");
@@ -568,6 +617,7 @@ async function autoPingIPs() {
     }
 
     document.getElementById('result').value = "";
+    hideResultPanel();
 
     var currentInput = document.getElementById('description').value.trim();
     if (!currentInput) {
@@ -575,52 +625,89 @@ async function autoPingIPs() {
         return;
     }
 
-    IP_array = [];
-    let deviceMapping = {}; // Store device name -> IP mapping
+    let deviceMapping = {};
     let lines = currentInput.split('\n');
 
-    // Extract IPs and device names
+    // Map a device name (leading text on a line) to the first IP on that line
     lines.forEach(function (line) {
         let trimmedLine = line.trim();
-        if (trimmedLine) {
-            let ip = isIP_Found(trimmedLine);
-            if (ip !== false) {
-                IP_array.push(ip);
-
-                // Extract device name (everything before the IP)
-                let ipIndex = trimmedLine.indexOf(ip);
-                if (ipIndex > 0) {
-                    let deviceName = trimmedLine.substring(0, ipIndex).trim();
-                    // Remove trailing dash or hyphen
-                    deviceName = deviceName.replace(/-$/, '').trim();
-                    if (deviceName) {
-                        deviceMapping[ip] = deviceName;
-                    }
+        if (!trimmedLine) {
+            return;
+        }
+        let ip = isIP_Found(trimmedLine);
+        if (ip !== false) {
+            let ipIndex = trimmedLine.indexOf(ip);
+            if (ipIndex > 0) {
+                let deviceName = trimmedLine.substring(0, ipIndex).trim();
+                deviceName = deviceName.replace(/-$/, '').trim();
+                if (deviceName) {
+                    deviceMapping[ip] = deviceName;
                 }
             }
         }
     });
 
-    let s = new Set(IP_array);
-    let unique_IPs = [...s];
+    // Ping every unique IP in the input (matches the live "IPs detected" badge)
+    let unique_IPs = extractUniqueIPs(currentInput);
 
     if (unique_IPs.length === 0) {
         document.getElementById('result').value = "No IP addresses found in input!";
         return;
     }
 
-    // Show progress modal
+    pingAbortRequested = false;
+    setButtonsBusy(true);
     showPingProgress(true);
-    updatePingStatus(`Found ${unique_IPs.length} unique IP addresses. Starting ping...`, 0, unique_IPs.length);
+    updatePingStatus('Found ' + unique_IPs.length + ' unique IP addresses. Starting ping...', 0, unique_IPs.length);
 
     try {
-        // Call Python backend
-        let results = await eel.ping_multiple_ips(unique_IPs, 4, 10)();
+        let response = await eel.ping_multiple_ips(unique_IPs, 4, 10)();
+        if (pingAbortRequested) {
+            return;
+        }
+        let results = Array.isArray(response) ? response : (response.results || []);
+        let cancelled = response.cancelled || false;
+        if (cancelled) {
+            return;
+        }
         processPingResults(results, deviceMapping);
     } catch (error) {
+        if (pingAbortRequested) {
+            return;
+        }
         showPingProgress(false);
+        setButtonsBusy(false);
         alert("Error executing ping: " + error.message);
         console.error("Ping execution error:", error);
+    }
+}
+
+function stopAutoPing() {
+    if (!pingInProgress || typeof eel === 'undefined') {
+        return;
+    }
+
+    pingAbortRequested = true;
+
+    // Reset UI immediately — user does not want partial results
+    showPingProgress(false);
+    setButtonsBusy(false);
+    hideResultPanel();
+
+    var progressBar = document.getElementById('pingProgressBar');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+    }
+    var percentageEl = document.getElementById('pingPercentage');
+    if (percentageEl) {
+        percentageEl.innerText = '0%';
+    }
+
+    // Kill all ping subprocesses on the backend (fire-and-forget)
+    try {
+        eel.cancel_auto_ping()();
+    } catch (error) {
+        console.error('Cancel ping error:', error);
     }
 }
 
@@ -629,6 +716,7 @@ function showPingProgress(show) {
     let progressEl = document.getElementById('pingProgress');
     if (progressEl) {
         progressEl.style.display = show ? 'block' : 'none';
+        progressEl.setAttribute('aria-hidden', show ? 'false' : 'true');
     }
 }
 
@@ -639,7 +727,7 @@ function updatePingStatus(message, current, total) {
         statusEl.innerText = message;
     }
 
-    if (total > 0) {
+    if (typeof total === 'number' && total > 0 && typeof current === 'number') {
         let percentage = Math.round((current / total) * 100);
 
         let progressBarEl = document.getElementById('pingProgressBar');
@@ -654,26 +742,37 @@ function updatePingStatus(message, current, total) {
 
         let detailsEl = document.getElementById('pingDetails');
         if (detailsEl) {
-            detailsEl.innerText = `Completed: ${current} / ${total}`;
+            detailsEl.innerText = 'Completed: ' + current + ' / ' + total;
         }
     }
 }
 
 // Utility functions for UI buttons
 function copyText(elementId) {
-    var copyText = document.getElementById(elementId);
-    if (!copyText) return;
+    var el = document.getElementById(elementId);
+    if (!el) return;
 
-    copyText.select();
-    copyText.setSelectionRange(0, 99999); /* For mobile devices */
-    document.execCommand("copy");
-
-    // Optional: Visual feedback could be added here
+    var text = el.value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(function () {
+            el.select();
+            el.setSelectionRange(0, 99999); /* For mobile devices */
+            try { document.execCommand("copy"); } catch (e) { console.error(e); }
+        });
+    } else {
+        el.select();
+        el.setSelectionRange(0, 99999); /* For mobile devices */
+        try { document.execCommand("copy"); } catch (e) { console.error(e); }
+    }
+    showBanner();
 }
 
 function clearText(elementId) {
     if (confirm('Are you sure you want to clear this text?')) {
         document.getElementById(elementId).value = "";
+        if (elementId === 'description') {
+            updateIpCountBadge();
+        }
     }
 }
 
@@ -681,6 +780,9 @@ async function pasteText(elementId) {
     try {
         const text = await navigator.clipboard.readText();
         document.getElementById(elementId).value = text;
+        if (elementId === 'description') {
+            updateIpCountBadge();
+        }
     } catch (err) {
         console.error('Failed to read clipboard contents: ', err);
         alert('Failed to read clipboard. Please check permissions or use Ctrl+V.');
@@ -688,14 +790,28 @@ async function pasteText(elementId) {
 }
 
 // Process and display ping results
-function processPingResults(results, deviceMapping = {}) {
-    updatePingStatus("Processing results...", results.length, results.length);
+function processPingResults(results, deviceMapping) {
+    updatePingStatus('Processing results...', results.length, results.length);
 
     if (results.length === 0) {
-        document.getElementById('result').value = "Error: Could not parse ping results.";
+        document.getElementById('result').value = 'Error: Could not parse ping results.';
         showPingProgress(false);
+        setButtonsBusy(false);
         return;
     }
+
+    // Color-coded summary panel (0% loss = Up, anything else = Down)
+    let upArr = [];
+    let downArr = [];
+    results.forEach(function (r) {
+        let label = (deviceMapping[r.ip] ? deviceMapping[r.ip] + " - " : "") + r.ip;
+        if (r.loss_percent === "0%") {
+            upArr.push(label);
+        } else {
+            downArr.push(label);
+        }
+    });
+    renderResultPanel(upArr, downArr);
 
     // Build detailed output
     var detailedOutput = "";
@@ -748,9 +864,10 @@ function processPingResults(results, deviceMapping = {}) {
         }
     });
 
-    // Hide progress
+    // Hide progress and unlock buttons
     setTimeout(function () {
         showPingProgress(false);
+        setButtonsBusy(false);
     }, 1000);
 }
 
@@ -758,34 +875,86 @@ function processPingResults(results, deviceMapping = {}) {
 // THEME SWITCHER
 // ===========================
 
-function toggleTheme() {
-    const body = document.body;
-    const checkbox = document.getElementById('checkbox');
+// Supported themes: dark, light, floral
+var THEME_BODY_CLASS = {
+    dark: null,
+    light: 'light-mode',
+    floral: 'floral-mode'
+};
 
-    // Logic Reversed: Checked (ON) = Night Mode (Default Dark CSS)
-    // Unchecked (OFF) = Day Mode (Light Mode CSS Override)
-    if (checkbox.checked) {
-        body.classList.remove('light-mode'); // Enable Dark (remove override)
-        localStorage.setItem('theme', 'dark');
-    } else {
-        body.classList.add('light-mode'); // Enable Light
-        localStorage.setItem('theme', 'light');
+var ALL_THEME_CLASSES = [
+    'light-mode', 'floral-mode'
+];
+
+var THEME_LABELS = {
+    dark: 'Night',
+    light: 'Light',
+    floral: 'JC'
+};
+
+var THEME_ICONS = {
+    dark: 'fa-moon',
+    light: 'fa-sun',
+    floral: 'fa-seedling'
+};
+
+var THEME_ALIASES = {
+    india: 'floral',
+    liquid: 'dark',
+    diwali: 'dark',
+    gold: 'dark',
+    'indian-gold': 'dark',
+    astronomy: 'dark',
+    vintage: 'dark',
+    hacking: 'dark',
+    noc: 'dark',
+    modern: 'dark'
+};
+
+function setTheme(name) {
+    const body = document.body;
+    body.classList.remove.apply(body.classList, ALL_THEME_CLASSES);
+
+    if (THEME_ALIASES[name]) {
+        name = THEME_ALIASES[name];
+    }
+
+    if (!THEME_BODY_CLASS.hasOwnProperty(name)) {
+        name = 'dark';
+    }
+
+    var cls = THEME_BODY_CLASS[name];
+    if (cls) {
+        body.classList.add(cls);
+    }
+
+    localStorage.setItem('theme', name);
+    document.body.dataset.theme = name;
+    updateThemeButtons(name);
+    resetNotesTheme();
+}
+
+function updateThemeButtons(name) {
+    document.querySelectorAll('.theme-opt').forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.theme === name);
+    });
+    var label = document.getElementById('themeCurrentLabel');
+    if (label) {
+        label.textContent = THEME_LABELS[name] || '';
+    }
+    var icon = document.getElementById('appTitleIcon');
+    if (icon) {
+        icon.className = 'fas ' + (THEME_ICONS[name] || 'fa-network-wired');
     }
 }
 
-// Initialize theme on load
-document.addEventListener('DOMContentLoaded', (event) => {
-    const currentTheme = localStorage.getItem('theme');
-    const checkbox = document.getElementById('checkbox');
-
-    // Default to Dark Mode (Switch ON) if null or 'dark'
-    if (currentTheme === 'light') {
-        document.body.classList.add('light-mode');
-        if (checkbox) checkbox.checked = false; // Switch OFF for Light
-    } else {
-        document.body.classList.remove('light-mode');
-        if (checkbox) checkbox.checked = true; // Switch ON for Dark
-    }
+// Initialize everything on load (default theme = Dark)
+document.addEventListener('DOMContentLoaded', () => {
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(currentTheme);
+    initIpCountWatcher();
+    initToolbar();
+    initNotes();
 });
 // ===========================
 // QUICK NOTES FEATURE
@@ -805,8 +974,8 @@ function toggleNotes() {
     }
 }
 
-// Auto-save logic
-document.addEventListener('DOMContentLoaded', () => {
+// Auto-save logic (called once from the main DOMContentLoaded handler)
+function initNotes() {
     // Load notes on startup (Async with Retries)
     setTimeout(async () => {
         if (typeof eel !== 'undefined' && eel.load_notes) {
@@ -841,29 +1010,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // Make Notes Draggable
     makeElementDraggable(document.getElementById("notesModal"));
-});
+}
 
-// Color Switcher Logic
 // Color Switcher Logic
 function setNoteColor(bgColor, headerColor) {
     let selection = window.getSelection();
     let noteArea = document.getElementById("quickNotesArea");
 
-    // Check if text is selected inside the notes area
     if (selection.rangeCount > 0 && selection.toString().length > 0 && noteArea.contains(selection.anchorNode)) {
-        // Change Text Color
         document.execCommand('styleWithCSS', false, true);
         document.execCommand('foreColor', false, headerColor);
     } else {
-        // Change Background Color (Default)
         let modal = document.getElementById("notesModal");
-        let header = modal.querySelector("div");
+        let header = modal && modal.querySelector(".notes-modal-header");
 
-        if (modal) modal.style.background = bgColor;
+        if (modal) {
+            modal.style.background = bgColor;
+            modal.style.borderColor = headerColor;
+        }
         if (header) {
             header.style.background = headerColor;
-            header.style.borderBottom = `1px solid ${headerColor}`;
+            header.style.borderBottomColor = headerColor;
         }
+    }
+}
+
+function resetNotesTheme() {
+    var modal = document.getElementById('notesModal');
+    if (!modal) return;
+    modal.style.background = '';
+    modal.style.borderColor = '';
+    var header = modal.querySelector('.notes-modal-header');
+    if (header) {
+        header.style.background = '';
+        header.style.borderBottomColor = '';
     }
 }
 
@@ -885,9 +1065,9 @@ function clearNotes() {
 // Drag Helper
 function makeElementDraggable(elmnt) {
     var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    // Move on header click
-    if (elmnt.querySelector("div")) {
-        elmnt.querySelector("div").onmousedown = dragMouseDown;
+    var handle = elmnt.querySelector(".notes-modal-header");
+    if (handle) {
+        handle.onmousedown = dragMouseDown;
     }
 
     function dragMouseDown(e) {
